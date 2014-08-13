@@ -34,14 +34,22 @@ void basic_http_client<C>::query(request& req, callback cb) {
   }
 
   request_ = req.to_str();
-  static_cast<C*>(this)->connect(
-  [this, cb](std::shared_ptr<C> self, error_code ec) {
-    if (ec) {
-      return cb(self, { std::map<std::string, std::string>(), "" }, ec);
-    } else {
-      return transfer(self, cb, ec);
-    }
-  });
+
+  auto connect_cb = std::bind(&basic_http_client<C>::on_connect, this,
+                              std::move(cb),
+                              std::placeholders::_1, std::placeholders::_2);
+  static_cast<C*>(this)->connect(std::move(connect_cb));
+}
+
+template<typename C>
+void basic_http_client<C>::on_connect(callback cb,
+                                      std::shared_ptr<C> self,
+                                      error_code ec) {
+  if (ec) {
+    return cb(self, { std::map<std::string, std::string>(), "" }, ec);
+  } else {
+    return transfer(self, cb, ec);
+  }
 }
 
 template<typename C>

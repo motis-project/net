@@ -40,6 +40,10 @@ public:
   std::streamsize read(char_type* s, std::streamsize n);
 
 protected:
+  void on_connect(callback cb,
+                  std::shared_ptr<C> self,
+                  boost::system::error_code ec);
+
   void transfer(std::shared_ptr<C> self,
                 callback cb,
                 boost::system::error_code ec);
