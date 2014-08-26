@@ -26,6 +26,10 @@ private:
   std::string path_;
 };
 
+inline std::ostream& operator<<(std::ostream& out, url const& u) {
+  return out << u.str();
+}
+
 }  // namespace client
 }  // namespace http
 }  // namespace net
