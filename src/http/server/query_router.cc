@@ -100,7 +100,7 @@ void query_router::decode_content(request& req) {
 
 void query_router::set_credentials(route_request& req) {
   std::string auth;
-  bool auth_set;
+  bool auth_set = false;
   for (const auto& h : req.headers) {
     if (h.name == "Authorization") {
       auth = h.value;
