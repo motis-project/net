@@ -25,7 +25,6 @@ namespace server {
 /// A reply to be sent to a client.
 struct reply
 {
-  /// The status of the reply.
   enum status_type
   {
     ok = 200,
@@ -44,7 +43,17 @@ struct reply
     not_implemented = 501,
     bad_gateway = 502,
     service_unavailable = 503
-  } status;
+  };
+
+  reply() = default;
+
+  reply(status_type status, std::string content)
+      : status(status),
+        content(std::move(content))
+  {}
+
+  /// The status of the reply.
+  status_type status;
 
   /// The headers to be included in the reply.
   std::vector<header> headers;
