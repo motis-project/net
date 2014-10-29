@@ -4,6 +4,7 @@
 #include <memory>
 #include <functional>
 #include <vector>
+#include <istream>
 
 #include "boost/asio.hpp"
 
@@ -44,10 +45,11 @@ class tcp_server : public std::enable_shared_from_this<tcp_server<HandlerFun>> {
       boost::system::error_code ignore;
 
       reenter (this) {
-        yield boost::asio::async_read(*socket_, read_buf_, boost::asio::transfer_all(), re);
+        using namespace boost::asio;
+        yield async_read(*socket_, read_buf_, transfer_all(), re);
         write_buf_ = handler_(input());
-        yield boost::asio::async_write(*socket_, boost::asio::buffer(write_buf_), re);
-        socket_->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignore);
+        yield async_write(*socket_, buffer(write_buf_), re);
+        socket_->shutdown(ip::tcp::socket::shutdown_both, ignore);
       }
     }
 #include "boost/asio/unyield.hpp"
