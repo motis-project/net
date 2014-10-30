@@ -16,8 +16,8 @@ class tcp_server : public std::enable_shared_from_this<tcp_server<HandlerFun>> {
                  public boost::asio::coroutine {
   public:
     client(std::shared_ptr<boost::asio::ip::tcp::socket> socket,
-               std::shared_ptr<tcp_server> server,
-               HandlerFun& handler)
+           std::shared_ptr<tcp_server> server,
+           HandlerFun& handler)
         : socket_(socket),
           server_(server),
           handler_(handler) {
