@@ -10,14 +10,15 @@
 
 namespace net {
 
-template<typename HandlerFun>
-class tcp_server : public std::enable_shared_from_this<tcp_server<HandlerFun>> {
+typedef std::function<std::string (std::string)> handler_fun;
+
+class tcp_server : public std::enable_shared_from_this<tcp_server> {
   class client : public std::enable_shared_from_this<client>,
                  public boost::asio::coroutine {
   public:
     client(std::shared_ptr<boost::asio::ip::tcp::socket> socket,
-               std::shared_ptr<tcp_server> server,
-               HandlerFun& handler)
+           std::shared_ptr<tcp_server> server,
+           handler_fun& handler)
         : socket_(socket),
           server_(server),
           handler_(handler) {
@@ -59,7 +60,7 @@ class tcp_server : public std::enable_shared_from_this<tcp_server<HandlerFun>> {
 
     std::shared_ptr<boost::asio::ip::tcp::socket> socket_;
     std::shared_ptr<tcp_server> server_;
-    HandlerFun& handler_;
+    handler_fun& handler_;
 
     boost::asio::streambuf read_buf_;
     std::string write_buf_;
@@ -68,12 +69,12 @@ class tcp_server : public std::enable_shared_from_this<tcp_server<HandlerFun>> {
 public:
   tcp_server(boost::asio::io_service& ios,
              uint16_t port,
-             HandlerFun handler)
+             handler_fun handler)
       : stopped_(false),
         ios_(ios),
         acceptor_(ios, boost::asio::ip::tcp::endpoint(
                            boost::asio::ip::tcp::v4(), port)),
-        handler_(std::forward<HandlerFun>(handler)) {
+        handler_(std::forward<handler_fun>(handler)) {
   }
 
   void start() {
@@ -123,15 +124,13 @@ private:
   bool stopped_;
   boost::asio::io_service& ios_;
   boost::asio::ip::tcp::acceptor acceptor_;
-  HandlerFun handler_;
+  handler_fun handler_;
   std::vector<std::weak_ptr<client>> clients_;
 };
 
-template<typename HandlerFun>
-std::shared_ptr<tcp_server<HandlerFun>> make_server(
-    boost::asio::io_service& ios, uint16_t port, HandlerFun handler) {
-  return std::make_shared<tcp_server<HandlerFun>>(
-      ios, port, std::forward<HandlerFun>(handler));
+std::shared_ptr<tcp_server> make_server(
+    boost::asio::io_service& ios, uint16_t port, handler_fun handler) {
+  return std::make_shared<tcp_server>(ios, port, std::move(handler));
 }
 
 }  // namespace net
