@@ -47,19 +47,15 @@ class tcp_server : public std::enable_shared_from_this<tcp_server<HandlerFun>> {
       reenter (this) {
         using namespace boost::asio;
         yield async_read(*socket_, read_buf_, transfer_all(), re);
-        write_buf_ = handler_(input());
+        write_buf_ = handler_({
+            boost::asio::buffer_cast<const char*>(read_buf_.data()),
+            read_buf_.size()
+        });
         yield async_write(*socket_, buffer(write_buf_), re);
         socket_->shutdown(ip::tcp::socket::shutdown_both, ignore);
       }
     }
 #include "boost/asio/unyield.hpp"
-
-    std::string input() {
-      std::istream in(&read_buf_);
-      std::string s;
-      in >> s;
-      return s;
-    }
 
     std::shared_ptr<boost::asio::ip::tcp::socket> socket_;
     std::shared_ptr<tcp_server> server_;
