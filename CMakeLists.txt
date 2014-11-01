@@ -1,18 +1,23 @@
 cmake_minimum_required(VERSION 2.6)
 project(net)
 
-macro(net_module name src)
+option(WITH_SSL "WITH_SSL" OFF)
+if (WITH_SSL)
+  find_package(OpenSSL REQUIRED)
+  include_directories(${OPENSSL_INCLUDE_DIR})
+endif()
+
+macro(net_module with_ssl name src)
   add_library(${name} STATIC ${src})
 
   if(MSVC)
-    target_link_libraries(${name} ${Boost_LIBRARIES} ${ARGN} gdi32)
     set(_def
       _VARIADIC_MAX=10
       _WIN32_WINNT=0x0501
     )
     set_target_properties(${name} PROPERTIES COMPILE_DEFINITIONS "${_def}")
+    set(_libs gdi32)
   elseif(MINGW)
-    target_link_libraries(${name} -Wl,-Bstatic ${Boost_LIBRARIES} ${ARGN} z gdi32 ws2_32 mswsock)
     set_target_properties(${name} PROPERTIES COMPILE_FLAGS "-std=c++11")
     set(_def
       BOOST_THREAD_USE_LIB
@@ -21,10 +26,17 @@ macro(net_module name src)
       _WIN32_IE=0x0501
     )
     set_target_properties(${name} PROPERTIES COMPILE_DEFINITIONS "${_def}")
+    set(_libs -Wl,-Bstatic gdi32 ws2_32 mswsock)
   else()
     set_target_properties(${name} PROPERTIES COMPILE_FLAGS "-Wall -Wextra -std=c++11")
-    target_link_libraries(${name} ${Boost_LIBRARIES} z ${ARGN} ssl crypto ${CMAKE_THREAD_LIBS_INIT})
   endif()
+  target_link_libraries(${name}
+    z
+    ${ARGN}
+    ${OPENSSL_LIBRARIES}
+    ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+  )
 endmacro(net_module)
 
 find_package(Boost COMPONENTS
@@ -50,11 +62,11 @@ file(GLOB_RECURSE HTTPS_CLIENT_SRC        "src/http/client/https_client.cc" ${BA
 file(GLOB_RECURSE SMTP_SRC                "src/smtp.cc")
 file(GLOB_RECURSE SSL_CLIENT_SRC          "src/ssl.cc")
 
-net_module(net-tcp_client   ${TCP_CLIENT_SRC})
-net_module(net-ssl_client   ${SSL_CLIENT_SRC})
-net_module(net-stomp        ${STOMP_SRC} net-tcp_client)
-net_module(net-base64       ${BASE64_SRC})
-net_module(net-http_server  ${HTTP_SERVER_SRC} net-base64)
-net_module(net-http_client  ${HTTP_CLIENT_SRC} net-tcp_client)
-net_module(net-https_client ${HTTPS_CLIENT_SRC} net-ssl_client)
-net_module(net-smtp_client  ${SMTP_SRC} net-ssl_client)
+net_module(net-tcp_client   FALSE ${TCP_CLIENT_SRC})
+net_module(net-ssl_client   TRUE  ${SSL_CLIENT_SRC})
+net_module(net-stomp        FALSE ${STOMP_SRC} net-tcp_client)
+net_module(net-base64       FALSE ${BASE64_SRC})
+net_module(net-http_server  FALSE ${HTTP_SERVER_SRC} net-base64)
+net_module(net-http_client  FALSE ${HTTP_CLIENT_SRC} net-tcp_client)
+net_module(net-https_client TRUE  ${HTTPS_CLIENT_SRC} net-ssl_client)
+net_module(net-smtp_client  TRUE  ${SMTP_SRC} net-ssl_client)
