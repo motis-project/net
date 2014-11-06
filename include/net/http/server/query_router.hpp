@@ -26,7 +26,7 @@ private:
   struct handler {
     std::string method;
     boost::regex path;
-    route_request_handler handler;
+    route_request_handler request_handler;
   };
 
   static void decode_content(request& req);

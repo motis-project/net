@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 2.6)
 project(net)
 
+if (MSVC)
+  set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "${BOOST_ROOT}\\stage\\lib")
+  link_directories(${CMAKE_LIBRARY_PATH})
+endif()
+
 option(WITH_SSL "WITH_SSL" OFF)
 if (WITH_SSL)
   find_package(OpenSSL REQUIRED)
@@ -31,7 +36,6 @@ macro(net_module name with_ssl src)
     set_target_properties(${name} PROPERTIES COMPILE_FLAGS "-Wall -Wextra -std=c++11")
   endif()
   target_link_libraries(${name}
-    z
     ${ARGN}
     ${OPENSSL_LIBRARIES}
     ${Boost_LIBRARIES}
@@ -39,13 +43,7 @@ macro(net_module name with_ssl src)
   )
 endmacro(net_module)
 
-find_package(Boost COMPONENTS
-  system
-  regex
-  iostreams
-  thread
-  date_time
-REQUIRED)
+find_package(Boost COMPONENTS system regex iostreams thread date_time)
 
 include_directories(${Boost_INCLUDE_DIR})
 include_directories("include")
