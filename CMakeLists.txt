@@ -7,7 +7,7 @@ if (WITH_SSL)
   include_directories(${OPENSSL_INCLUDE_DIR})
 endif()
 
-macro(net_module with_ssl name src)
+macro(net_module name with_ssl src)
   add_library(${name} STATIC ${src})
 
   if(MSVC)
@@ -48,7 +48,7 @@ find_package(Boost COMPONENTS
 REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIR})
-include_directories("./include")
+include_directories("include")
 
 file(GLOB_RECURSE STOMP_SRC               "src/stomp_client.cc")
 file(GLOB_RECURSE BASE64_SRC              "src/base64.cc")
@@ -62,11 +62,11 @@ file(GLOB_RECURSE HTTPS_CLIENT_SRC        "src/http/client/https_client.cc" ${BA
 file(GLOB_RECURSE SMTP_SRC                "src/smtp.cc")
 file(GLOB_RECURSE SSL_CLIENT_SRC          "src/ssl.cc")
 
-net_module(net-tcp_client   FALSE ${TCP_CLIENT_SRC})
-net_module(net-ssl_client   TRUE  ${SSL_CLIENT_SRC})
-net_module(net-stomp        FALSE ${STOMP_SRC} net-tcp_client)
-net_module(net-base64       FALSE ${BASE64_SRC})
-net_module(net-http_server  FALSE ${HTTP_SERVER_SRC} net-base64)
-net_module(net-http_client  FALSE ${HTTP_CLIENT_SRC} net-tcp_client)
-net_module(net-https_client TRUE  ${HTTPS_CLIENT_SRC} net-ssl_client)
-net_module(net-smtp_client  TRUE  ${SMTP_SRC} net-ssl_client)
+net_module(net-tcp_client   FALSE "${TCP_CLIENT_SRC}")
+net_module(net-ssl_client   TRUE  "${SSL_CLIENT_SRC}")
+net_module(net-stomp        FALSE "${STOMP_SRC}" net-tcp_client)
+net_module(net-base64       FALSE "${BASE64_SRC}")
+net_module(net-http_server  FALSE "${HTTP_SERVER_SRC}" net-base64)
+net_module(net-http_client  FALSE "${HTTP_CLIENT_SRC}" net-tcp_client)
+net_module(net-https_client TRUE  "${HTTPS_CLIENT_SRC}" net-ssl_client)
+net_module(net-smtp_client  TRUE  "${SMTP_SRC}" net-ssl_client)
