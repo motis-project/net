@@ -36,6 +36,7 @@ macro(net_module name with_ssl src)
     set_target_properties(${name} PROPERTIES COMPILE_FLAGS "-Wall -Wextra -std=c++11")
   endif()
   target_link_libraries(${name}
+    ${_libs}
     ${ARGN}
     ${OPENSSL_LIBRARIES}
     ${Boost_LIBRARIES}
