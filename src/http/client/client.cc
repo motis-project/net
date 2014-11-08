@@ -236,9 +236,6 @@ std::size_t basic_http_client<C>::copy_content(std::size_t buffer_size) {
   return buffer_size;
 }
 
-template class basic_http_client<tcp>;
-template class basic_http_client<ssl>;
-
 }  // namespace client
 }  // namespace http
 }  // namespace net
