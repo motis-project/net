@@ -1,3 +1,4 @@
+#include "net/ssl.h"
 #include "net/http/client/http_client.h"
 
 namespace net {

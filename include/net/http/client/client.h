@@ -7,10 +7,10 @@
 #include <vector>
 #include <map>
 
-#include "boost/asio/io_service.hpp"
-#include "boost/asio/coroutine.hpp"
+#include "boost/asio.hpp"
 #include "boost/iostreams/stream.hpp"
 #include "boost/system/error_code.hpp"
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 #include "net/http/client/url.h"
 #include "net/http/client/request.h"
