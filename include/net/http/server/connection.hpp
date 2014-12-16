@@ -11,10 +11,10 @@
 #ifndef HTTP_CONNECTION_HPP
 #define HTTP_CONNECTION_HPP
 
-#include <array>
 #include <memory>
 
 #include <boost/asio.hpp>
+#include <boost/array.hpp>
 
 #include "net/http/server/reply.hpp"
 #include "net/http/server/request.hpp"
@@ -62,7 +62,7 @@ private:
   request_handler& request_handler_;
 
   /// Buffer for incoming data.
-  std::array<char, 8192> buffer_;
+  boost::array<char, 8192> buffer_;
 
   /// The incoming request.
   request request_;
