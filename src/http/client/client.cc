@@ -8,6 +8,19 @@
 #include "boost/iostreams/filtering_streambuf.hpp"
 #include "boost/iostreams/filter/gzip.hpp"
 
+#include "net/tcp.h"
+
+#ifdef WITH_SSL
+#include "net/ssl.h"
+#endif
+
+#ifdef WITH_ZLIB
+#define UNCOMPRESS true
+#else
+#define UNCOMPRESS false
+#warning "compiling without deflate"
+#endif
+
 namespace asio = boost::asio;
 using boost::system::error_code;
 
@@ -163,7 +176,7 @@ void basic_http_client<C>::respond(callback cb,
 
   std::stringstream response;
   auto it = header_.find("content-encoding");
-  if (it != header_.end() && it->second == "gzip") {
+  if (UNCOMPRESS && it != header_.end() && it->second == "gzip") {
    try {
      boost::iostreams::filtering_streambuf<boost::iostreams::input> filter;
      filter.push(boost::iostreams::gzip_decompressor());
@@ -235,6 +248,12 @@ std::size_t basic_http_client<C>::copy_content(std::size_t buffer_size) {
   }
   return buffer_size;
 }
+
+#ifdef WITH_SSL
+template class basic_http_client<ssl>;
+#else
+template class basic_http_client<tcp>;
+#endif
 
 }  // namespace client
 }  // namespace http

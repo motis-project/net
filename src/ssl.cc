@@ -67,6 +67,7 @@ void ssl::on_resolve(
                                                std::placeholders::_1,
                                                std::placeholders::_2));
   } else {
+    finally(ec);
     return cb(self, ec);
   }
 }
@@ -82,7 +83,6 @@ void ssl::on_connect(
                                              self, cb,
                                              std::placeholders::_1));
   } else {
-    req_timeout_timer_.cancel();
     finally(ec);
     return cb(self, ec);
   }
@@ -95,7 +95,6 @@ void ssl::on_handshake(
   if (!ec) {
     connected_ = true;
   } else {
-    req_timeout_timer_.cancel();
     finally(ec);
   }
   return cb(self, ec);
