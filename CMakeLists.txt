@@ -7,8 +7,13 @@ if (MSVC)
 endif()
 
 option(NO_ZLIB "NO_ZLIB" OFF)
+option(NO_SSL "NO_SSL" OFF)
 
 function(net_module name with_ssl with_zlib src)
+  if (NO_SSL AND with_ssl)
+    return()
+  endif()
+
   add_library(${name} STATIC ${src})
 
   if (with_ssl)
