@@ -262,10 +262,6 @@ request_parser::result_type request_parser::consume(request& req, char input)
         {
           const auto& length_str = req.headers.back().value;
           auto parsed_length = boost::lexical_cast<std::size_t>(length_str);
-          if (parsed_length > 0x100000)
-          {
-            return bad;
-          }
           req.content_length = parsed_length;
         }
         catch (const boost::bad_lexical_cast&)
