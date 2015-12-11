@@ -31,10 +31,16 @@ public:
 
   /// Construct the server to listen on the specified TCP address and port, and
   /// serve up files from the given directory.
-  explicit server(
-      boost::asio::io_service& io_service,
-      std::string address, std::string port,
-      request_handler request_handler);
+  server(boost::asio::io_service& io_service,
+         std::string const& address, std::string const& port,
+         request_handler request_handler);
+
+  /// Construct server without starting to listen.
+  server(boost::asio::io_service& io_service);
+
+  /// Opens socket.
+  void listen(std::string const& address, std::string const& port,
+              request_handler request_handler);
 
   // Stops accepting new connections.
   void stop();
@@ -45,9 +51,6 @@ private:
 
   /// The io_service used to perform asynchronous operations.
   boost::asio::io_service& io_service_;
-
-  /// The signal_set is used to register for process termination notifications.
-  boost::asio::signal_set signals_;
 
   /// Acceptor used to listen for incoming connections.
   boost::asio::ip::tcp::acceptor acceptor_;
