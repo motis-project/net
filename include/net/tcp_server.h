@@ -8,6 +8,7 @@
 #include <istream>
 
 #include "boost/asio.hpp"
+#include "boost/array.hpp"
 
 namespace net {
 
@@ -15,6 +16,8 @@ typedef std::function<void(std::string const&, bool)> handler_cb_fun;
 typedef std::function<void(std::string const&, handler_cb_fun)> handler_fun;
 
 class tcp_server : public std::enable_shared_from_this<tcp_server> {
+  typedef uint32_t msg_size_t;
+
   class client : public std::enable_shared_from_this<client>,
                  public boost::asio::coroutine {
   public:
@@ -22,18 +25,18 @@ class tcp_server : public std::enable_shared_from_this<tcp_server> {
            std::shared_ptr<tcp_server> server, handler_fun& handler)
         : socket_(socket), server_(server), handler_(handler) {}
 
-    void start() { handle(this->shared_from_this()); }
+    void start() {
+      handle(this->shared_from_this(), "", false, boost::system::error_code(),
+             0);
+    }
 
     void stop() { socket_->close(); }
 
   private:
 #include "boost/asio/yield.hpp"
-    void handle(std::shared_ptr<client> self, std::string const& response = "",
-                bool close = false,
-                boost::system::error_code ec = boost::system::error_code(),
-                std::size_t bytes_transferred = 0) {
-      (void)(bytes_transferred);
-
+    void handle(std::shared_ptr<client> self, std::string const& response,
+                bool close, boost::system::error_code ec,
+                std::size_t /* bytes_transferred */) {
       if (ec && ec != boost::asio::error::eof) {
         return;
       }
@@ -43,16 +46,33 @@ class tcp_server : public std::enable_shared_from_this<tcp_server> {
       auto re1 = std::bind(&client::handle, this, self, _1, _2,
                            boost::system::error_code(), 0);
       boost::system::error_code ignore;
+      msg_size_t req_size, res_size;
 
       reenter(this) {
         using namespace boost::asio;
 
         while (true) {
-          yield async_read(*socket_, read_buf_, transfer_all(), re);
-          handler_({boost::asio::buffer_cast<const char*>(read_buf_.data()),
-                    read_buf_.size()},
-                   re1);
-          yield async_write(*socket_, buffer(response), re);
+          // Receive request size.
+          yield async_read(*socket_, buffer(size_buf_),
+                           transfer_exactly(sizeof(uint32_t)), re);
+          req_size = ntohl(*reinterpret_cast<msg_size_t*>(size_buf_.data()));
+
+          // Read request.
+          yield async_read(*socket_, read_buf_, transfer_exactly(req_size), re);
+
+          // Handle request.
+          yield handler_(
+              {boost::asio::buffer_cast<const char*>(read_buf_.data()),
+               read_buf_.size()},
+              re1);
+
+          // Write response.
+          res_size = htonl(static_cast<msg_size_t>(response.size()));
+          write_buf_ = response;
+          yield async_write(
+              *socket_,
+              buffer(reinterpret_cast<void*>(&res_size), sizeof(res_size)), re);
+          yield async_write(*socket_, buffer(write_buf_), transfer_all(), re);
 
           if (close) {
             socket_->shutdown(ip::tcp::socket::shutdown_both, ignore);
@@ -67,6 +87,7 @@ class tcp_server : public std::enable_shared_from_this<tcp_server> {
     std::shared_ptr<tcp_server> server_;
     handler_fun& handler_;
 
+    boost::array<unsigned char, sizeof(msg_size_t)> size_buf_;
     boost::asio::streambuf read_buf_;
     std::string write_buf_;
   };
