@@ -37,7 +37,8 @@ class tcp_server : public std::enable_shared_from_this<tcp_server> {
     void handle(std::shared_ptr<client> self, std::string const& response,
                 bool close, boost::system::error_code ec,
                 std::size_t /* bytes_transferred */) {
-      if (ec && ec != boost::asio::error::eof) {
+      close = ec == boost::asio::error::eof;
+      if (ec) {
         return;
       }
 
@@ -76,12 +77,20 @@ class tcp_server : public std::enable_shared_from_this<tcp_server> {
 
           if (close) {
             socket_->shutdown(ip::tcp::socket::shutdown_both, ignore);
-            break;
+            return;
+          } else {
+            reset();
           }
         }
       }
     }
 #include "boost/asio/unyield.hpp"
+
+    void reset() {
+      std::fill(std::begin(size_buf_), std::end(size_buf_), 0);
+      write_buf_.clear();
+      read_buf_.consume(read_buf_.size());
+    }
 
     std::shared_ptr<boost::asio::ip::tcp::socket> socket_;
     std::shared_ptr<tcp_server> server_;
