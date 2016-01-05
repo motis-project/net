@@ -94,7 +94,7 @@ class tcp_server : public std::enable_shared_from_this<tcp_server> {
 
 public:
   tcp_server(boost::asio::io_service& ios)
-      : stopped_(false), ios_(ios), acceptor_(ios) {}
+      : active_(false), ios_(ios), acceptor_(ios) {}
 
   void listen(std::string const& address, std::string const& port,
               handler_fun request_handler) {
@@ -106,11 +106,12 @@ public:
     acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
     acceptor_.bind(endpoint);
     acceptor_.listen();
+    active_ = true;
     do_accept();
   }
 
   void do_accept() {
-    if (stopped_) {
+    if (!active_) {
       return;
     }
 
@@ -129,7 +130,11 @@ public:
   }
 
   void stop() {
-    stopped_ = true;
+    if (!active_) {
+      return;
+    }
+
+    active_ = false;
     acceptor_.cancel();
 
     for (auto& client : clients_) {
@@ -152,7 +157,7 @@ private:
     }
   }
 
-  bool stopped_;
+  bool active_;
   boost::asio::io_service& ios_;
   boost::asio::ip::tcp::acceptor acceptor_;
   handler_fun handler_;
