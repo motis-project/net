@@ -131,7 +131,7 @@ void query_router::set_content_length(reply& rep) {
 
   auto content_length_header = get_header(rep, "Content-Length");
   if (content_length_header != std::end(rep.headers)) {
-    return;
+    rep.headers.erase(content_length_header);
   }
 
   auto content_length = boost::lexical_cast<std::string>(rep.content.length());
