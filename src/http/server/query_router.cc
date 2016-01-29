@@ -11,14 +11,13 @@ namespace net {
 namespace http {
 namespace server {
 
-query_router& query_router::route(std::string method,
-                                  std::string path_regex,
+query_router& query_router::route(std::string method, std::string path_regex,
                                   route_request_handler handler) {
   routes_.push_back({method, boost::regex(path_regex), handler});
   return *this;
 }
 
-void query_router::reply_hook(std::function<void (reply&)> reply_hook) {
+void query_router::reply_hook(std::function<void(reply&)> reply_hook) {
   reply_hook_ = std::move(reply_hook);
 }
 
@@ -33,11 +32,12 @@ void query_router::enable_cors() {
 
 void query_router::operator()(request const& req, callback cb) {
   boost::cmatch match;
-  auto route = std::find_if(std::begin(routes_), std::end(routes_),
-                            [&match, &req](handler const& route) {
-    return (route.method == "*" || route.method == req.method) &&
-           boost::regex_match(req.uri.c_str(), match, route.path);
-  });
+  auto route = std::find_if(
+      std::begin(routes_), std::end(routes_),
+      [&match, &req](handler const& route) {
+        return (route.method == "*" || route.method == req.method) &&
+               boost::regex_match(req.uri.c_str(), match, route.path);
+      });
 
   if (route == std::end(routes_)) {
     auto rep = reply::stock_reply(reply::not_found);
@@ -73,13 +73,13 @@ void query_router::operator()(request const& req, callback cb) {
       reply_hook_(rep);
     }
     return cb(rep);
- } catch (...) {
-   auto rep = reply::stock_reply(reply::internal_server_error);
-   if (reply_hook_) {
-     reply_hook_(rep);
-   }
-   return cb(rep);
- }
+  } catch (...) {
+    auto rep = reply::stock_reply(reply::internal_server_error);
+    if (reply_hook_) {
+      reply_hook_(rep);
+    }
+    return cb(rep);
+  }
 }
 
 void query_router::decode_content(request& req) {
@@ -129,13 +129,15 @@ void query_router::set_content_length(reply& rep) {
     return;
   }
 
-  auto content_length_header = get_header(rep, "Content-Length");
+  auto content_length_header = std::find_if(
+      std::begin(rep.headers), std::end(rep.headers),
+      [](header const& hdr) { return hdr.name == "Content-Length"; });
   if (content_length_header != std::end(rep.headers)) {
     rep.headers.erase(content_length_header);
   }
 
   auto content_length = boost::lexical_cast<std::string>(rep.content.length());
-  rep.headers.push_back({ "Content-Length", std::move(content_length) });
+  rep.headers.push_back({"Content-Length", std::move(content_length)});
 }
 
 void query_router::set_content_type(reply& rep) {
@@ -143,15 +145,17 @@ void query_router::set_content_type(reply& rep) {
     return;
   }
 
-  auto content_length_header = get_header(rep, "Content-Type");
+  auto content_length_header = std::find_if(
+      std::begin(rep.headers), std::end(rep.headers),
+      [](header const& hdr) { return hdr.name == "Content-Type"; });
   if (content_length_header != std::end(rep.headers)) {
     return;
   }
 
   if (boost::starts_with(rep.content, "<?xml")) {
-    rep.headers.push_back({ "Content-Type", "text/xml; charset=utf-8" });
+    rep.headers.push_back({"Content-Type", "text/xml; charset=utf-8"});
   } else {
-    rep.headers.push_back({ "Content-Type", "text/txt; charset=utf-8" });
+    rep.headers.push_back({"Content-Type", "text/txt; charset=utf-8"});
   }
 }
 
@@ -161,14 +165,6 @@ void query_router::set_status(reply& rep) {
   }
 }
 
-auto query_router::get_header(reply const& rep, std::string const& key)
--> decltype(reply::headers)::const_iterator {
-  return std::find_if(std::begin(rep.headers), std::end(rep.headers),
-                      [&key](header const& hdr) {
-    return hdr.name == key;
-  });
-}
-
-} // namespace server
-} // namespace http
-} // namespace net
+}  // namespace server
+}  // namespace http
+}  // namespace net
