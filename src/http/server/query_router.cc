@@ -1,5 +1,7 @@
 #include "net/http/server/query_router.hpp"
 
+#include <numeric>
+
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/lexical_cast.hpp"
 
