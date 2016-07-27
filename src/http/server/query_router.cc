@@ -15,7 +15,7 @@ namespace server {
 
 query_router& query_router::route(std::string method, std::string path_regex,
                                   route_request_handler handler) {
-  routes_.push_back({method, boost::regex(path_regex), handler});
+  routes_.push_back({method, std::regex(path_regex), handler});
   return *this;
 }
 
@@ -33,12 +33,12 @@ void query_router::enable_cors() {
 }
 
 void query_router::operator()(request const& req, callback cb) {
-  boost::cmatch match;
+  std::cmatch match;
   auto route = std::find_if(
       std::begin(routes_), std::end(routes_),
       [&match, &req](handler const& route) {
         return (route.method == "*" || route.method == req.method) &&
-               boost::regex_match(req.uri.c_str(), match, route.path);
+               std::regex_match(req.uri.c_str(), match, route.path);
       });
 
   if (route == std::end(routes_)) {

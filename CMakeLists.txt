@@ -71,7 +71,7 @@ function(net_module name with_ssl with_zlib src)
   unset(_all_dev)
 endfunction(net_module)
 
-find_package(Boost COMPONENTS system regex iostreams thread date_time)
+find_package(Boost COMPONENTS system iostreams thread date_time)
 
 include_directories(${Boost_INCLUDE_DIR})
 include_directories("include")
