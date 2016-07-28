@@ -1,10 +1,10 @@
 #ifndef HTTP_QUERY_ROUTER_HPP
 #define HTTP_QUERY_ROUTER_HPP
 
-#include <vector>
+#include <regex>
 #include <string>
+#include <vector>
 
-#include "boost/regex.hpp"
 
 #include "net/http/server/route_request.hpp"
 #include "net/http/server/reply.hpp"
@@ -25,7 +25,7 @@ public:
 private:
   struct handler {
     std::string method;
-    boost::regex path;
+    std::regex path;
     route_request_handler request_handler;
   };
 
