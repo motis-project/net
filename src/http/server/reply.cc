@@ -103,8 +103,20 @@ const char crlf[] = { '\r', '\n' };
 
 } // namespace misc_strings
 
-std::vector<boost::asio::const_buffer> reply::to_buffers()
+std::vector<boost::asio::const_buffer> reply::to_buffers(bool add_cors_headers)
 {
+  if (add_cors_headers) {
+    headers.emplace_back(
+        "Access-Control-Allow-Origin",
+        "*");
+    headers.emplace_back(
+        "Access-Control-Allow-Headers",
+        "X-Requested-With, Content-Type, Accept, Authorization");
+    headers.emplace_back(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS, HEAD");
+  }
+
   auto const add_header = [](
       std::vector<boost::asio::const_buffer>& buffers,
       header const& h) {

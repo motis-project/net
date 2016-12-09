@@ -23,7 +23,8 @@ server::server(boost::asio::io_service& io_service,
   : io_service_(io_service),
     acceptor_(io_service_),
     connection_manager_(),
-    socket_(io_service_)
+    socket_(io_service_),
+    cors_enabled_(false)
 {
   listen(address, port, std::move(request_handler));
 }
@@ -32,7 +33,8 @@ server::server(boost::asio::io_service& io_service)
     : io_service_(io_service),
       acceptor_(io_service_),
       connection_manager_(),
-      socket_(io_service_)
+      socket_(io_service_),
+      cors_enabled_(false)
 {}
 
 void server::listen(std::string const& address, std::string const& port,
@@ -47,6 +49,9 @@ void server::listen(std::string const& address, std::string const& port,
   acceptor_.listen();
   do_accept();
 }
+
+void server::set_cors_enabled(bool enabled)
+{ cors_enabled_ = enabled; }
 
 void server::do_accept()
 {
@@ -63,7 +68,8 @@ void server::do_accept()
         if (!ec)
         {
           connection_manager_.start(std::make_shared<connection>(
-              std::move(socket_), connection_manager_, request_handler_));
+              std::move(socket_), connection_manager_, request_handler_,
+              cors_enabled_));
         }
 
         do_accept();

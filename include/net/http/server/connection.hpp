@@ -37,7 +37,8 @@ public:
 
   /// Construct a connection with the given socket.
   explicit connection(boost::asio::ip::tcp::socket socket,
-      connection_manager& manager, request_handler& handler);
+      connection_manager& manager, request_handler& handler,
+      bool add_cors_headers);
 
   /// Start the first asynchronous operation for the connection.
   void start();
@@ -72,6 +73,9 @@ private:
 
   /// The reply to be sent back to the client.
   reply reply_;
+
+  /// Cross-Origin-Resource-Sharing.
+  bool add_cors_headers_;
 };
 
 typedef std::shared_ptr<connection> connection_ptr;

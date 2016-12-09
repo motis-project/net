@@ -21,10 +21,12 @@ namespace http {
 namespace server {
 
 connection::connection(boost::asio::ip::tcp::socket socket,
-    connection_manager& manager, request_handler& handler)
+    connection_manager& manager, request_handler& handler,
+    bool add_cors_headers)
   : socket_(std::move(socket)),
     connection_manager_(manager),
-    request_handler_(handler)
+    request_handler_(handler),
+    add_cors_headers_(add_cors_headers)
 {
 }
 
@@ -77,7 +79,7 @@ void connection::do_read()
 void connection::do_write()
 {
   auto self(shared_from_this());
-  boost::asio::async_write(socket_, reply_.to_buffers(),
+  boost::asio::async_write(socket_, reply_.to_buffers(add_cors_headers_),
       [this, self](boost::system::error_code ec, std::size_t)
       {
         if (!ec)

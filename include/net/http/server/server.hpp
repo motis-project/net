@@ -45,6 +45,9 @@ public:
   // Stops accepting new connections.
   void stop();
 
+  // Enable or disable Cross-Origin-Resource-Sharing.
+  void set_cors_enabled(bool enabled);
+
 private:
   /// Perform an asynchronous accept operation.
   void do_accept();
@@ -63,6 +66,9 @@ private:
 
   /// The handler for all incoming requests.
   request_handler request_handler_;
+
+  /// Add Cross-Origin-Resource-Sharing headers if set to true.
+  bool cors_enabled_;
 };
 
 } // namespace server

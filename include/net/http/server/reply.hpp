@@ -64,7 +64,10 @@ struct reply
   /// Convert the reply into a vector of buffers. The buffers do not own the
   /// underlying memory blocks, therefore the reply object must remain valid and
   /// not be changed until the write operation has completed.
-  std::vector<boost::asio::const_buffer> to_buffers();
+  ///
+  /// \param add_cors_headers  appends CORS headers
+  ///                          (ignores existing CORS headers)
+  std::vector<boost::asio::const_buffer> to_buffers(bool add_cors_headers);
 
   /// Get a stock reply.
   static reply stock_reply(status_type status);
