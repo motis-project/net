@@ -6,8 +6,8 @@ if (MSVC)
   link_directories(${CMAKE_LIBRARY_PATH})
 endif()
 
-option(NO_ZLIB "NO_ZLIB" OFF)
-option(NO_SSL "NO_SSL" OFF)
+option(NO_ZLIB "NO_ZLIB" ON)
+option(NO_SSL "NO_SSL" ON)
 
 function(net_module name with_ssl with_zlib src)
   if (NO_SSL AND with_ssl)
