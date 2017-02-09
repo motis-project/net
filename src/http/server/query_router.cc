@@ -59,7 +59,7 @@ void query_router::operator()(request const& req, callback cb) {
 
   try {
     return route->request_handler(route_req, [cb, this](reply rep) {
-      set_content_length(rep);
+      //set_content_length(rep);
       set_content_type(rep);
       set_status(rep);
       if (reply_hook_) {

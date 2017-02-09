@@ -99,7 +99,8 @@ boost::asio::const_buffer to_buffer(reply::status_type status)
 namespace misc_strings {
 
 const char name_value_separator[] = { ':', ' ' };
-const char crlf[] = { '\r', '\n' };
+//const char crlf[] = { '\r', '\n' };
+std::array<char, 2> crlf = { '\r', '\n' };
 
 } // namespace misc_strings
 
@@ -117,6 +118,12 @@ std::vector<boost::asio::const_buffer> reply::to_buffers(bool add_cors_headers)
         "GET, POST, PUT, DELETE, OPTIONS, HEAD");
   }
 
+  if (!content.empty()) {
+    headers.emplace_back("Content-Length", std::to_string(content.size()));
+  }
+
+  headers.emplace_back("Connection", "close");
+
   auto const add_header = [](
       std::vector<boost::asio::const_buffer>& buffers,
       header const& h) {
@@ -130,10 +137,6 @@ std::vector<boost::asio::const_buffer> reply::to_buffers(bool add_cors_headers)
   buffers.push_back(status_strings::to_buffer(status));
   for (auto const& header : headers) {
     add_header(buffers, header);
-  }
-
-  if (content.size() != 0) {
-    add_header(buffers, {"Content-Length", std::to_string(content.size())});
   }
 
   buffers.push_back(boost::asio::buffer(misc_strings::crlf));
