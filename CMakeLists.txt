@@ -20,7 +20,7 @@ function(net_module name with_ssl with_zlib src)
     set(_all_dev WITH_SSL=true)
     if (NOT OPENSSL_FOUND)
       find_package(OpenSSL REQUIRED)
-      include_directories(${OPENSSL_INCLUDE_DIR})
+      include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
     endif()
   endif()
 
@@ -28,7 +28,7 @@ function(net_module name with_ssl with_zlib src)
     set(_all_dev ${_all_dev} WITH_ZLIB=true)
     if (NOT ZLIB_FOUND)
       find_package(ZLIB REQUIRED)
-      include_directories(${ZLIB_INCLUDE_DIRS})
+      include_directories(SYSTEM ${ZLIB_INCLUDE_DIRS})
     endif()
   endif()
 
@@ -73,7 +73,7 @@ endfunction(net_module)
 
 find_package(Boost COMPONENTS system iostreams thread date_time)
 
-include_directories(${Boost_INCLUDE_DIR})
+include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 include_directories("include")
 
 file(GLOB_RECURSE STOMP_SRC        "src/stomp_client.cc")

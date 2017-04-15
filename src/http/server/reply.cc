@@ -99,8 +99,7 @@ boost::asio::const_buffer to_buffer(reply::status_type status)
 namespace misc_strings {
 
 const char name_value_separator[] = { ':', ' ' };
-//const char crlf[] = { '\r', '\n' };
-std::array<char, 2> crlf = { '\r', '\n' };
+const char crlf[] = { '\r', '\n' };
 
 } // namespace misc_strings
 
