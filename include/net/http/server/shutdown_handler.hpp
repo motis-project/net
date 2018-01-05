@@ -29,6 +29,25 @@ private:
   boost::asio::signal_set signals_;
 };
 
+template <typename Fn>
+class stop_handler {
+public:
+  stop_handler(boost::asio::io_service& ios, Fn&& fn)
+      : fn_(std::forward<Fn>(fn)), signals_(ios) {
+    signals_.add(SIGINT);
+    signals_.async_wait([this](boost::system::error_code, int) { fn_(); });
+  }
+
+private:
+  Fn fn_;
+  boost::asio::signal_set signals_;
+};
+
+template <typename Fn>
+auto make_stop_handler(boost::asio::io_service& ios, Fn&& fn) {
+  return stop_handler<Fn>(ios, std::forward<Fn>(fn));
+}
+
 }  // namespace server
 }  // namespace http
 }  // namespace net
