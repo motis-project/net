@@ -38,6 +38,8 @@ public:
     signals_.async_wait([this](boost::system::error_code, int) { fn_(); });
   }
 
+  void stop() { fn_(); }
+
 private:
   Fn fn_;
   boost::asio::signal_set signals_;
