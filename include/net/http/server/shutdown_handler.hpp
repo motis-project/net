@@ -29,19 +29,18 @@ private:
   boost::asio::signal_set signals_;
 };
 
-template <typename Fn>
 class stop_handler {
 public:
-  stop_handler(boost::asio::io_service& ios, Fn&& fn)
-      : fn_(std::forward<Fn>(fn)), signals_(ios) {
+  stop_handler(boost::asio::io_service& ios, std::function<void()> fn)
+      : fn_(std::move(fn)), signals_(ios) {
     signals_.add(SIGINT);
     signals_.async_wait([this](boost::system::error_code, int) { fn_(); });
   }
 
-  void stop() { fn_(); }
+  void stop() { if (fn_) { fn_(); } }
 
 private:
-  Fn fn_;
+  std::function<void()> fn_;
   boost::asio::signal_set signals_;
 };
 
