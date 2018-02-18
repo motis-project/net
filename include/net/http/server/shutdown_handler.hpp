@@ -44,11 +44,6 @@ private:
   boost::asio::signal_set signals_;
 };
 
-template <typename Fn>
-auto make_stop_handler(boost::asio::io_service& ios, Fn&& fn) {
-  return stop_handler<Fn>(ios, std::forward<Fn>(fn));
-}
-
 }  // namespace server
 }  // namespace http
 }  // namespace net
