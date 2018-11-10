@@ -14,7 +14,7 @@ public:
   url(const std::string& url);
   url(char const* url);
 
-  std::string str()  const { return str_; }
+  std::string str() const { return str_; }
   std::string host() const { return host_; }
   std::string port() const { return port_; }
   std::string path() const { return path_; }

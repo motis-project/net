@@ -14,13 +14,9 @@ class request {
 public:
   typedef std::map<std::string, std::string> str_map;
 
-  enum method {
-    GET, POST, DEL, PUT, OPTIONS
-  };
+  enum method { GET, POST, DEL, PUT, OPTIONS };
 
-  request(std::string addr,
-          enum method m = GET,
-          str_map hdr = str_map(),
+  request(std::string addr, enum method m = GET, str_map hdr = str_map(),
           std::string body = "");
 
   std::string to_str() const;
@@ -30,7 +26,6 @@ public:
   std::map<std::string, std::string> headers;
   std::string body;
 };
-
 
 }  // namespace client
 }  // namespace http

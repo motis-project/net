@@ -1,94 +1,69 @@
-cmake_minimum_required(VERSION 2.6)
+set(CMAKE_USER_MAKE_RULES_OVERRIDE
+   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/c_flag_overrides.cmake)
+set(CMAKE_USER_MAKE_RULES_OVERRIDE_CXX
+   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cxx_flag_overrides.cmake)
+
+cmake_minimum_required(VERSION 3.10)
 project(net)
 
+add_subdirectory(external_lib/libressl EXCLUDE_FROM_ALL)
+
+
 if (MSVC)
-  set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "${BOOST_ROOT}\\stage\\lib")
-  link_directories(${CMAKE_LIBRARY_PATH})
+  set(Boost_USE_STATIC_LIBS ON)
+  set(Boost_USE_MULTITHREADED ON)
+  set(Boost_USE_STATIC_RUNTIME ON)
+endif()
+find_package(Boost COMPONENTS system REQUIRED)
+include_directories(SYSTEM ${Boost_INCLUDE_DIR})
+link_directories(${Boost_LIBRARY_DIRS})
+add_definitions(/DBOOST_ALL_NO_LIB=1)
+
+if (MSVC)
+  set(net-compile-flags "/std:c++latest")
+else()
+  set(net-compile-flags "-std=c++17")
 endif()
 
-option(NO_ZLIB "NO_ZLIB" ON)
-option(NO_SSL "NO_SSL" ON)
+file(GLOB_RECURSE web-server-src src/web_server/*.cc)
+add_library(web-server ${web-server-src})
+target_compile_options(web-server PUBLIC ${net-compile-flags})
+target_link_libraries(web-server ${Boost_SYSTEM_LIBRARY} ssl crypto)
+target_include_directories(web-server PUBLIC include)
 
-function(net_module name with_ssl with_zlib src)
-  if (NO_SSL AND with_ssl)
-    return()
-  endif()
+file(GLOB_RECURSE wss-client-src src/wss_client.cc)
+add_library(wss-client ${wss-client-src})
+target_compile_options(wss-client PUBLIC ${net-compile-flags})
+target_link_libraries(wss-client ${Boost_SYSTEM_LIBRARY} ssl crypto)
+target_include_directories(wss-client PUBLIC include)
 
-  add_library(${name} STATIC ${src})
+file(GLOB_RECURSE http-client-src src/http/client/*.cc)
+add_library(http-client ${http-client-src})
+target_compile_options(http-client PUBLIC ${net-compile-flags})
+target_link_libraries(http-client ${Boost_SYSTEM_LIBRARY} ssl crypto)
+target_include_directories(http-client PUBLIC include)
 
-  if (with_ssl)
-    set(_all_dev WITH_SSL=true)
-    if (NOT OPENSSL_FOUND)
-      find_package(OpenSSL REQUIRED)
-      include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
-    endif()
-  endif()
+add_executable(net-web_server-sample example/web_server_example.cc)
+target_link_libraries(net-web_server-sample web-server)
 
-  if (with_zlib AND NOT NO_ZLIB)
-    set(_all_dev ${_all_dev} WITH_ZLIB=true)
-    if (NOT ZLIB_FOUND)
-      find_package(ZLIB REQUIRED)
-      include_directories(SYSTEM ${ZLIB_INCLUDE_DIRS})
-    endif()
-  endif()
+add_executable(net-wss_client-sample example/wss_client_example.cc)
+target_link_libraries(net-wss_client-sample wss-client)
 
-  if(MSVC)
-    set(_def
-      ${_all_dev}
-      _VARIADIC_MAX=10
-      _WIN32_WINNT=0x0501
+add_custom_target(net-format-check
+  find
+      ${CMAKE_CURRENT_SOURCE_DIR}/include
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
+    -type f
+    (
+    -name "*.cc"
+    -o
+    -name "*.h"
     )
-    set_target_properties(${name} PROPERTIES COMPILE_DEFINITIONS "${_def}")
-    set(_libs gdi32)
-  elseif(MINGW)
-    set_target_properties(${name} PROPERTIES COMPILE_FLAGS "-std=c++11")
-    set(_def
-      ${_all_dev}
-      BOOST_THREAD_USE_LIB
-      WINVER=0x0501
-      _WIN32_WINNT=0x0501
-      _WIN32_IE=0x0501
-    )
-    set_target_properties(${name} PROPERTIES COMPILE_DEFINITIONS "${_def}")
-    set(_libs -Wl,-Bstatic gdi32 ws2_32 mswsock)
-  else()
-    set(_def
-      ${_all_dev}
-    )
-    set_target_properties(${name} PROPERTIES COMPILE_DEFINITIONS "${_def}")
-    set_target_properties(${name} PROPERTIES COMPILE_FLAGS "-Wall -Wextra -std=c++11")
-  endif()
-
-  target_link_libraries(${name}
-    ${_libs}
-    ${ARGN}
-    ${OPENSSL_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-    ${Boost_LIBRARIES}
-    ${CMAKE_THREAD_LIBS_INIT}
-  )
-
-  unset(_all_dev)
-endfunction(net_module)
-
-find_package(Boost COMPONENTS system iostreams thread date_time)
-
-include_directories(SYSTEM ${Boost_INCLUDE_DIR})
-include_directories("include")
-
-file(GLOB_RECURSE STOMP_SRC        "src/stomp_client.cc")
-file(GLOB_RECURSE BASE64_SRC       "src/base64.cc")
-file(GLOB_RECURSE HTTP_SERVER_SRC  "src/http/server/*.cc")
-file(GLOB_RECURSE TCP_CLIENT_SRC   "src/tcp.cc")
-file(GLOB_RECURSE HTTP_CLIENT_SRC  "src/http/client/*.cc")
-file(GLOB_RECURSE SMTP_SRC         "src/smtp.cc")
-file(GLOB_RECURSE SSL_CLIENT_SRC   "src/ssl.cc")
-
-net_module(net-tcp_client   FALSE FALSE "${TCP_CLIENT_SRC}")
-net_module(net-ssl_client   TRUE  FALSE "${SSL_CLIENT_SRC}")
-net_module(net-stomp        FALSE FALSE "${STOMP_SRC}" net-tcp_client)
-net_module(net-base64       FALSE FALSE "${BASE64_SRC}")
-net_module(net-http_server  FALSE FALSE "${HTTP_SERVER_SRC}" net-base64)
-net_module(net-http_client  FALSE TRUE  "${HTTP_CLIENT_SRC}" net-tcp_client)
-net_module(net-https_client TRUE  TRUE  "${HTTP_CLIENT_SRC}" net-ssl_client)
-net_module(net-smtp_client  TRUE  FALSE "${SMTP_SRC}" net-ssl_client)
+    -print0
+  | xargs -0 clang-format -i
+  COMMAND
+  git status --porcelain | xargs -I {} -0 test -z \"{}\"
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMENT "Checking source code formatting"
+  VERBATIM
+)

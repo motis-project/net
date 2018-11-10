@@ -1,14 +1,14 @@
 #ifndef NET_TCP_SERVER_H_
 #define NET_TCP_SERVER_H_
 
+#include <functional>
+#include <istream>
 #include <memory>
 #include <utility>
-#include <functional>
 #include <vector>
-#include <istream>
 
-#include "boost/asio.hpp"
 #include "boost/array.hpp"
+#include "boost/asio.hpp"
 
 namespace net {
 

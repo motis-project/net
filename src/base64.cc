@@ -1,21 +1,21 @@
 #include "net/base64.h"
 
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include <sstream>
 
 #include "boost/archive/iterators/base64_from_binary.hpp"
 #include "boost/archive/iterators/binary_from_base64.hpp"
-#include "boost/archive/iterators/transform_width.hpp"
-#include "boost/archive/iterators/remove_whitespace.hpp"
 #include "boost/archive/iterators/ostream_iterator.hpp"
+#include "boost/archive/iterators/remove_whitespace.hpp"
+#include "boost/archive/iterators/transform_width.hpp"
 
 using namespace boost::archive::iterators;
 
 typedef transform_width<
     binary_from_base64<remove_whitespace<std::string::const_iterator>>, 8, 6>
-it_binary_t;
-typedef base64_from_binary<transform_width<const char *, 6, 8>> base64_text;
+    it_binary_t;
+typedef base64_from_binary<transform_width<const char*, 6, 8>> base64_text;
 
 namespace net {
 
@@ -38,12 +38,10 @@ std::string decode_base64(std::string base64) {
 // From http://stackoverflow.com/a/7053808
 std::string encode_base64(std::string plain) {
   std::stringstream os;
-  std::copy(
-      base64_text(plain.c_str()),
-      base64_text(plain.c_str() + plain.size()),
-      ostream_iterator<char>(os)
-  );
+  std::copy(base64_text(plain.c_str()),
+            base64_text(plain.c_str() + plain.size()),
+            ostream_iterator<char>(os));
   return os.str();
 }
 
-} // namespace net
+}  // namespace net

@@ -8,9 +8,8 @@ namespace asio = boost::asio;
 
 namespace net {
 
-stomp_client::stomp_client(boost::asio::io_service& ios,
-                           std::string host, std::string port,
-                           std::string destination)
+stomp_client::stomp_client(boost::asio::io_service& ios, std::string host,
+                           std::string port, std::string destination)
     : net::tcp(ios, std::move(host), std::move(port),
                boost::posix_time::seconds(10)),
       destination_(std::move(destination)),
@@ -21,16 +20,18 @@ stomp_client::stomp_client(boost::asio::io_service& ios,
 
 void stomp_client::init_commands() {
   connect_cmd_ = std::string(
-    "CONNECT\r\n"
-    "login:a\r\n"
-    "passcode:b\r\n"
-    "heart-beat:5000,1000\r\n\r\n"
-  );
+      "CONNECT\r\n"
+      "login:a\r\n"
+      "passcode:b\r\n"
+      "heart-beat:5000,1000\r\n\r\n");
   connect_cmd_ += '\0';
 
-  subscribe_cmd_ = std::string("SUBSCRIBE\r\n"\
-     "destination:") + destination_ + "\r\n"\
-     "ack:auto\r\n\r\n";
+  subscribe_cmd_ = std::string(
+                       "SUBSCRIBE\r\n"
+                       "destination:") +
+                   destination_ +
+                   "\r\n"
+                   "ack:auto\r\n\r\n";
   subscribe_cmd_ += '\0';
 
   beat_cmd_ = "\r\n";
@@ -38,7 +39,7 @@ void stomp_client::init_commands() {
 }
 
 void stomp_client::subscribe(callback cb,
-                             std::function<void (std::string)> on_msg) {
+                             std::function<void(std::string)> on_msg) {
   return connect([this, cb, on_msg](net::tcp::tcp_ptr self, error_code ec) {
     if (ec) {
       return cb(self, ec);
@@ -49,9 +50,8 @@ void stomp_client::subscribe(callback cb,
 }
 
 #include "boost/asio/yield.hpp"
-void stomp_client::transfer(net::tcp::tcp_ptr self,
-                            callback cb,
-                            std::function<void (std::string)> on_msg,
+void stomp_client::transfer(net::tcp::tcp_ptr self, callback cb,
+                            std::function<void(std::string)> on_msg,
                             error_code ec) {
   if (ec) {
     asio::detail::coroutine_ref(this) = 0;
@@ -63,8 +63,8 @@ void stomp_client::transfer(net::tcp::tcp_ptr self,
   }
 
   using std::placeholders::_1;
-  auto re = std::bind(&stomp_client::transfer, this,
-                      self, std::move(cb), on_msg, _1);
+  auto re =
+      std::bind(&stomp_client::transfer, this, self, std::move(cb), on_msg, _1);
   error_code ignored;
 
   reenter(this) {
@@ -106,10 +106,9 @@ void stomp_client::skip_whitespace() {
 
 void stomp_client::push_server_timeout() {
   beat_timeout_timer_.expires_from_now(boost::posix_time::seconds(5));
-  beat_timeout_timer_.async_wait(
-    std::bind(&stomp_client::server_timeout, this,
-              shared_from_this(),
-              std::placeholders::_1));
+  beat_timeout_timer_.async_wait(std::bind(&stomp_client::server_timeout, this,
+                                           shared_from_this(),
+                                           std::placeholders::_1));
 }
 
 void stomp_client::server_timeout(net::tcp::tcp_ptr, error_code ec) {
@@ -125,24 +124,21 @@ void stomp_client::heartbeat(net::tcp::tcp_ptr self, error_code ec) {
     return;
   }
 
-  asio::async_write(socket_, asio::buffer(beat_cmd_), [self, this](
-      error_code ec,
-      std::size_t /* bytes_transferred */) {
-    if (ec) {
-      std::cout << ec.message() << "\n";
-      cancel();
-    }
-  });
+  asio::async_write(
+      socket_, asio::buffer(beat_cmd_),
+      [self, this](error_code ec, std::size_t /* bytes_transferred */) {
+        if (ec) {
+          std::cout << ec.message() << "\n";
+          cancel();
+        }
+      });
 
   beat_timer_.expires_from_now(boost::posix_time::seconds(5));
   beat_timer_.async_wait(std::bind(&stomp_client::heartbeat, this,
-                                   shared_from_this(),
-                                   std::placeholders::_1));
+                                   shared_from_this(), std::placeholders::_1));
 }
 
-void stomp_client::respond(callback cb,
-             net::tcp::tcp_ptr self,
-             error_code ec) {
+void stomp_client::respond(callback cb, net::tcp::tcp_ptr self, error_code ec) {
   finally(ec);
   if (asio::error::eof == ec) {
     ec = error_code();

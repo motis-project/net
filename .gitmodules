@@ -1,0 +1,3 @@
+[submodule "external_lib/libressl"]
+	path = external_lib/libressl
+	url = git@git.motis-project.de:lib/libressl.git
