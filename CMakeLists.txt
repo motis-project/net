@@ -8,7 +8,6 @@ project(net)
 
 add_subdirectory(external_lib/libressl EXCLUDE_FROM_ALL)
 
-
 if (MSVC)
   set(Boost_USE_STATIC_LIBS ON)
   set(Boost_USE_MULTITHREADED ON)
