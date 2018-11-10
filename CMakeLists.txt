@@ -7,13 +7,14 @@ cmake_minimum_required(VERSION 3.10)
 project(net)
 
 add_subdirectory(external_lib/libressl EXCLUDE_FROM_ALL)
+add_subdirectory(external_lib/zlib EXCLUDE_FROM_ALL)
 
 if (MSVC)
   set(Boost_USE_STATIC_LIBS ON)
   set(Boost_USE_MULTITHREADED ON)
   set(Boost_USE_STATIC_RUNTIME ON)
 endif()
-find_package(Boost COMPONENTS system REQUIRED)
+find_package(Boost COMPONENTS system iostreams regex REQUIRED)
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 add_definitions(/DBOOST_ALL_NO_LIB=1)
@@ -37,9 +38,20 @@ target_link_libraries(wss-client ${Boost_SYSTEM_LIBRARY} ssl crypto)
 target_include_directories(wss-client PUBLIC include)
 
 file(GLOB_RECURSE http-client-src src/http/client/*.cc)
-add_library(http-client ${http-client-src})
+add_library(http-client
+  ${http-client-src}
+  src/ssl.cc
+  src/tcp.cc
+)
 target_compile_options(http-client PUBLIC ${net-compile-flags})
-target_link_libraries(http-client ${Boost_SYSTEM_LIBRARY} ssl crypto)
+target_link_libraries(http-client
+  ${Boost_SYSTEM_LIBRARY}
+  ${Boost_IOSTREAMS_LIBRARY}
+  ${Boost_REGEX_LIBRARY}
+  zlib
+  ssl
+  crypto
+)
 target_include_directories(http-client PUBLIC include)
 
 add_executable(net-web_server-sample example/web_server_example.cc)
@@ -47,6 +59,9 @@ target_link_libraries(net-web_server-sample web-server)
 
 add_executable(net-wss_client-sample example/wss_client_example.cc)
 target_link_libraries(net-wss_client-sample wss-client)
+
+add_executable(net-http_client-sample example/https_example.cc)
+target_link_libraries(net-http_client-sample http-client)
 
 add_custom_target(net-format-check
   find
