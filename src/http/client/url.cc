@@ -1,8 +1,8 @@
 #include "net/http/client/url.h"
 
-#include <utility>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 
 #include "boost/regex.hpp"
 
@@ -13,14 +13,12 @@ namespace client {
 static boost::regex url_regex("(.*://)([a-zA-Z0-9\\.\\-]+)(:[0-9]*)?(.*)");
 
 url::url(std::string host, std::string port, std::string path)
-  : str_(std::string("http://") + host + ":" + port + path),
-    host_(std::move(host)),
-    port_(std::move(port)),
-    path_(std::move(path)) {
-}
+    : str_(std::string("http://") + host + ":" + port + path),
+      host_(std::move(host)),
+      port_(std::move(port)),
+      path_(std::move(path)) {}
 
-url::url(std::string const& url)
-    : str_(url) {
+url::url(std::string const& url) : str_(url) {
   // Extract protocol, port, host address and path from the URL.
   boost::match_results<std::string::const_iterator> what;
   bool matches = boost::regex_search(url, what, url_regex);

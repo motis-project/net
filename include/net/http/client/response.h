@@ -1,8 +1,8 @@
 #ifndef NET_HTTP_CLIENT_RESPONSE_H_
 #define NET_HTTP_CLIENT_RESPONSE_H_
 
-#include <string>
 #include <map>
+#include <string>
 
 namespace net {
 namespace http {

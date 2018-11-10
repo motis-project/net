@@ -10,9 +10,9 @@ namespace client {
 
 typedef basic_http_client<ssl> https;
 
-template<typename... Args>
+template <typename... Args>
 std::shared_ptr<https> make_https(Args&&... args) {
-  return std::make_shared<https>(std::forward<Args>(args) ...);
+  return std::make_shared<https>(std::forward<Args>(args)...);
 }
 
 }  // namespace client

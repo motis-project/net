@@ -3,15 +3,15 @@
 #include <sstream>
 
 #include "boost/asio.hpp"
-#include "boost/lexical_cast.hpp"
 #include "boost/date_time.hpp"
+#include "boost/lexical_cast.hpp"
 
 #include "net/base64.h"
 
-#define SERVICE_READY            (220)
+#define SERVICE_READY (220)
 #define REQUESTED_MAIL_ACTION_OK (250)
 #define AUTHENTICATION_SUCCEEDED (235)
-#define START_MAIL_INPUT         (354)
+#define START_MAIL_INPUT (354)
 
 namespace asio = boost::asio;
 namespace pt = boost::posix_time;
@@ -19,14 +19,12 @@ using boost::system::error_code;
 
 namespace net {
 
-smtp_client::smtp_client(asio::io_service& ios,
-                         std::string host, std::string port,
-                         std::string hostname,
+smtp_client::smtp_client(asio::io_service& ios, std::string host,
+                         std::string port, std::string hostname,
                          boost::posix_time::time_duration timeout)
     : net::ssl(ios, std::move(host), std::move(port), std::move(timeout)),
       hostname_(std::move(hostname)),
-      response_stream_(&buf_) {
-}
+      response_stream_(&buf_) {}
 
 void smtp_client::query(smtp_request& req, callback cb) {
   generate_commands(req);
@@ -40,8 +38,7 @@ void smtp_client::query(smtp_request& req, callback cb) {
 }
 
 #include "boost/asio/yield.hpp"
-void smtp_client::transfer(std::shared_ptr<net::ssl> self,
-                           callback cb,
+void smtp_client::transfer(std::shared_ptr<net::ssl> self, callback cb,
                            error_code ec) {
   if (ec == asio::error::eof) {
     boost::asio::detail::coroutine_ref(this) = 0;
@@ -134,9 +131,7 @@ void smtp_client::transfer(std::shared_ptr<net::ssl> self,
 void smtp_client::generate_commands(smtp_request const& req) {
   init_cmd_ = "EHLO client.example.com\r\n";
 
-  std::string auth = req.username + '\0' +
-                     req.username + '\0' +
-                     req.password;
+  std::string auth = req.username + '\0' + req.username + '\0' + req.password;
   auth_cmd_ = "AUTH PLAIN " + net::encode_base64(auth) + "\r\n";
 
   from_cmd_ = std::string("MAIL FROM:<") + req.from + ">\r\n";
@@ -144,20 +139,19 @@ void smtp_client::generate_commands(smtp_request const& req) {
   data_cmd_ = "DATA\r\n";
 
   std::stringstream data_stream;
-  data_stream
-    << "Date: " << pt::to_iso_extended_string(pt::second_clock::local_time())
-    << "\r\n"
-    << "From: <" + req.from + ">\r\n"
-    << "To: <" + req.to + ">\r\n"
-    << "Subject: " << req.subject << "\r\n\r\n"
-    << req.content << "\r\n.\r\n";
+  data_stream << "Date: "
+              << pt::to_iso_extended_string(pt::second_clock::local_time())
+              << "\r\n"
+              << "From: <" + req.from + ">\r\n"
+              << "To: <" + req.to + ">\r\n"
+              << "Subject: " << req.subject << "\r\n\r\n"
+              << req.content << "\r\n.\r\n";
   data_ = data_stream.str();
 
   quit_cmd_ = "QUIT\r\n";
 }
 
-void smtp_client::respond(callback cb,
-                          std::shared_ptr<net::ssl> self,
+void smtp_client::respond(callback cb, std::shared_ptr<net::ssl> self,
                           error_code ec) {
   finally(ec);
 

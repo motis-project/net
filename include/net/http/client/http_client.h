@@ -10,9 +10,9 @@ namespace client {
 
 typedef basic_http_client<tcp> http;
 
-template<typename... Args>
+template <typename... Args>
 std::shared_ptr<http> make_http(Args&&... args) {
-  return std::make_shared<http>(std::forward<Args>(args) ...);
+  return std::make_shared<http>(std::forward<Args>(args)...);
 }
 
 }  // namespace client

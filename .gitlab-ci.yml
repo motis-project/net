@@ -1,0 +1,86 @@
+variables:
+  ASAN_SYMBOLIZER_PATH: "/opt/clang+llvm-5.0.0-linux-x86_64-ubuntu16.04/bin/llvm-symbolizer"
+
+# GCC production
+gcc-release:
+  tags:
+    - bionic
+  script:
+    - export BOOST_ROOT=/opt/boost_1_67_0-gcc-7
+    - git submodule update --init --recursive
+    - mkdir -p build-release
+    - cd build-release
+    - cmake -GNinja -DCMAKE_BUILD_TYPE=Release ..
+    - ninja -j8 http-client net-web_server-sample net-wss_client-sample
+
+# Clang debug with address sanitizer
+clang-debug-asan:
+  tags:
+    - bionic
+  script:
+    - export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+    - export CXXFLAGS="-fsanitize=address -fno-omit-frame-pointer"
+    - export BOOST_ROOT=/opt/boost_1_67_0-gcc-7
+    - export CXX=clang++
+    - export CC=clang
+    - git submodule update --init --recursive
+    - mkdir -p build-clang-debug-asan
+    - cd build-clang-debug-asan
+    - cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCTX_ASAN=true ..
+    - ninja -j8 http-client net-web_server-sample net-wss_client-sample
+
+# GCC debug valgrind
+gcc-debug-valgrind:
+  tags:
+    - bionic
+  script:
+    - export BOOST_ROOT=/opt/boost_1_67_0-gcc-7
+    #- export CXXFLAGS="-D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" TODO(felix) currently not working with OSRM
+    - git submodule update --init --recursive
+    - mkdir -p build-gcc-debug-valgrind
+    - cd build-gcc-debug-valgrind
+    - cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCTX_VALGRIND=true ..
+    - ninja -j8 http-client net-web_server-sample net-wss_client-sample
+
+# MSVC release
+msvc-release:
+  tags:
+    - windows
+  script:
+    - set WD=%cd%
+    - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+    - cd %WD%
+    - set BOOST_ROOT=C:\boost_1_67_0
+    - git submodule update --init --recursive
+    - mkdir build-msvc-release
+    - cd build-msvc-release
+    - cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DZLIB_ROOT=C:\zlib-1.2.8 ..
+    - ninja -j8 http-client net-web_server-sample net-wss_client-sample
+
+# MSVC debug
+msvc-debug:
+  tags:
+    - windows
+  script:
+    - set WD=%cd%
+    - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+    - cd %WD%
+    - set BOOST_ROOT=C:\boost_1_67_0
+    - git submodule update --init --recursive
+    - mkdir build-msvc-debug
+    - cd build-msvc-debug
+    - cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DZLIB_ROOT=C:\zlib-1.2.8 ..
+    - ninja -j8 http-client net-web_server-sample net-wss_client-sample
+
+# Clang-Format
+clang-format:
+  tags:
+    - bionic
+  script:
+    - export BOOST_ROOT=/opt/boost_1_67_0-gcc-7
+    - git submodule update --init --recursive
+    - mkdir build-clang-format
+    - cd build-clang-format
+    - cmake -GNinja ..
+    - ninja net-format-check
+

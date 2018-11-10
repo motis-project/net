@@ -2,24 +2,14 @@
 
 #include <cstring>
 
-#include "boost/regex.hpp"
-#include "boost/lexical_cast.hpp"
 #include "boost/iostreams/copy.hpp"
-#include "boost/iostreams/filtering_streambuf.hpp"
 #include "boost/iostreams/filter/gzip.hpp"
+#include "boost/iostreams/filtering_streambuf.hpp"
+#include "boost/lexical_cast.hpp"
+#include "boost/regex.hpp"
 
-#include "net/tcp.h"
-
-#ifdef WITH_SSL
 #include "net/ssl.h"
-#endif
-
-#ifdef WITH_ZLIB
-#define UNCOMPRESS true
-#else
-#define UNCOMPRESS false
-#warning "compiling without deflate"
-#endif
+#include "net/tcp.h"
 
 namespace asio = boost::asio;
 using boost::system::error_code;
@@ -30,16 +20,15 @@ namespace client {
 
 boost::regex chunk_size_rx_("\r?\n?[0-9a-fA-F]+\r\n");
 
-template<typename C>
-basic_http_client<C>::basic_http_client(asio::io_service& ios, url u,
-                                        boost::posix_time::time_duration timeout)
+template <typename C>
+basic_http_client<C>::basic_http_client(
+    asio::io_service& ios, url u, boost::posix_time::time_duration timeout)
     : C(ios, u.host(), u.port(), std::move(timeout)),
       response_stream_(&buf_),
       status_code_(0),
-      length_(0) {
-}
+      length_(0) {}
 
-template<typename C>
+template <typename C>
 void basic_http_client<C>::query(request& req, callback cb) {
   if (!req.body.empty()) {
     auto content_length = boost::lexical_cast<std::string>(req.body.length());
@@ -48,24 +37,23 @@ void basic_http_client<C>::query(request& req, callback cb) {
 
   request_ = req.to_str();
 
-  auto connect_cb = std::bind(&basic_http_client<C>::on_connect, this,
-                              std::move(cb),
-                              std::placeholders::_1, std::placeholders::_2);
+  auto connect_cb =
+      std::bind(&basic_http_client<C>::on_connect, this, std::move(cb),
+                std::placeholders::_1, std::placeholders::_2);
   static_cast<C*>(this)->connect(std::move(connect_cb));
 }
 
-template<typename C>
-void basic_http_client<C>::on_connect(callback cb,
-                                      std::shared_ptr<C> self,
+template <typename C>
+void basic_http_client<C>::on_connect(callback cb, std::shared_ptr<C> self,
                                       error_code ec) {
   if (ec) {
-    return cb(self, { std::map<std::string, std::string>(), "" }, ec);
+    return cb(self, {std::map<std::string, std::string>(), ""}, ec);
   } else {
     return transfer(self, cb, ec);
   }
 }
 
-template<typename C>
+template <typename C>
 std::streamsize basic_http_client<C>::read(char_type* s, std::streamsize n) {
   std::size_t ret = std::min(static_cast<std::size_t>(n), response_.size());
   if (ret != 0) {
@@ -79,9 +67,8 @@ std::streamsize basic_http_client<C>::read(char_type* s, std::streamsize n) {
 }
 
 #include "boost/asio/yield.hpp"
-template<typename C>
-void basic_http_client<C>::transfer(std::shared_ptr<C> self,
-                                    callback cb,
+template <typename C>
+void basic_http_client<C>::transfer(std::shared_ptr<C> self, callback cb,
                                     error_code ec) {
   auto& my = *static_cast<C*>(this);
 
@@ -112,7 +99,7 @@ void basic_http_client<C>::transfer(std::shared_ptr<C> self,
 
         try {
           read_content_length();
-        } catch(std::bad_cast const&) {
+        } catch (std::bad_cast const&) {
           using namespace boost::system;
           error_code ec(errc::illegal_byte_sequence, system_category());
           return respond(cb, self, ec);
@@ -120,13 +107,12 @@ void basic_http_client<C>::transfer(std::shared_ptr<C> self,
         response_.resize(length_);
 
         if (length_ > read) {
-          yield asio::async_read(my.socket_,
-                                 asio::buffer(&(response_[read]),
-                                              length_ - read),
-                                 asio::transfer_at_least(length_ - read), re);
+          yield asio::async_read(
+              my.socket_, asio::buffer(&(response_[read]), length_ - read),
+              asio::transfer_at_least(length_ - read), re);
         }
       } else if (header_.find("transfer-encoding") != header_.end()) {
-        while(true) {
+        while (true) {
           yield asio::async_read_until(my.socket_, buf_, chunk_size_rx_, re);
 
           chunk_size = 0;
@@ -144,15 +130,16 @@ void basic_http_client<C>::transfer(std::shared_ptr<C> self,
             to_transfer = chunk_size - chunk_bytes;
             original = response_.size();
             response_.resize(original + to_transfer);
-            yield asio::async_read(my.socket_,
-                asio::buffer(&(response_[original]), to_transfer),
+            yield asio::async_read(
+                my.socket_, asio::buffer(&(response_[original]), to_transfer),
                 asio::transfer_at_least(to_transfer), re);
           }
         }
       } else {
         while (true) {
           copy_content(buf_.size());
-          yield asio::async_read(my.socket_, buf_, asio::transfer_at_least(1), re);
+          yield asio::async_read(my.socket_, buf_, asio::transfer_at_least(1),
+                                 re);
         }
       }
       return respond(cb, self, ec);
@@ -161,9 +148,8 @@ void basic_http_client<C>::transfer(std::shared_ptr<C> self,
 }
 #include "boost/asio/unyield.hpp"
 
-template<typename C>
-void basic_http_client<C>::respond(callback cb,
-                                   std::shared_ptr<C> self,
+template <typename C>
+void basic_http_client<C>::respond(callback cb, std::shared_ptr<C> self,
                                    error_code ec) {
   static_cast<C*>(this)->finally(ec);
 
@@ -175,27 +161,27 @@ void basic_http_client<C>::respond(callback cb,
   boost::iostreams::stream<http_stream_ref> s(boost::ref(*this));
 
   std::stringstream response;
-  auto it = header_.find("content-encoding");
-  if (UNCOMPRESS && it != header_.end() && it->second == "gzip") {
-   try {
-     boost::iostreams::filtering_streambuf<boost::iostreams::input> filter;
-     filter.push(boost::iostreams::gzip_decompressor());
-     filter.push(s);
-     boost::iostreams::copy(filter, response);
-   } catch (const boost::iostreams::gzip_error& e) {
-     using namespace boost::system;
-     error_code ec(errc::illegal_byte_sequence, system_category());
-     return cb(self, { header_, "" }, ec);
-   }
+  if (auto it = header_.find("content-encoding");
+      it != header_.end() && it->second == "gzip") {
+    try {
+      boost::iostreams::filtering_streambuf<boost::iostreams::input> filter;
+      filter.push(boost::iostreams::gzip_decompressor());
+      filter.push(s);
+      boost::iostreams::copy(filter, response);
+    } catch (const boost::iostreams::gzip_error& e) {
+      using namespace boost::system;
+      error_code ec(errc::illegal_byte_sequence, system_category());
+      return cb(self, {header_, ""}, ec);
+    }
   } else {
     boost::iostreams::copy(s, response);
   }
 
   response_ = {};
-  cb(self, { header_, response.str() }, ec);
+  cb(self, {header_, response.str()}, ec);
 }
 
-template<typename C>
+template <typename C>
 void basic_http_client<C>::read_header() {
   std::string http_version;
   response_stream_ >> http_version;
@@ -227,7 +213,7 @@ void basic_http_client<C>::read_header() {
   }
 }
 
-template<typename C>
+template <typename C>
 void basic_http_client<C>::read_content_length() {
   int l = boost::lexical_cast<int>(header_["content-length"]);
   // Check parse result: not negativ and <= 2MB
@@ -237,7 +223,7 @@ void basic_http_client<C>::read_content_length() {
   length_ = static_cast<std::size_t>(l);
 }
 
-template<typename C>
+template <typename C>
 std::size_t basic_http_client<C>::copy_content(std::size_t buffer_size) {
   if (buffer_size > 0) {
     const char* buf = boost::asio::buffer_cast<const char*>(buf_.data());
@@ -249,11 +235,8 @@ std::size_t basic_http_client<C>::copy_content(std::size_t buffer_size) {
   return buffer_size;
 }
 
-#ifdef WITH_SSL
 template class basic_http_client<ssl>;
-#else
 template class basic_http_client<tcp>;
-#endif
 
 }  // namespace client
 }  // namespace http

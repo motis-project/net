@@ -1,13 +1,13 @@
 #ifndef NET_SSL_H_
 #define NET_SSL_H_
 
-#include <string>
 #include <functional>
 #include <memory>
+#include <string>
 
 #include "boost/asio.hpp"
-#include "boost/date_time/posix_time/posix_time_types.hpp"
 #include "boost/asio/ssl.hpp"
+#include "boost/date_time/posix_time/posix_time_types.hpp"
 
 namespace net {
 
@@ -16,8 +16,7 @@ public:
   typedef std::shared_ptr<ssl> ssl_ptr;
   typedef std::function<void(ssl_ptr, boost::system::error_code)> connect_cb;
 
-  ssl(boost::asio::io_service& io_service,
-      std::string host, std::string port,
+  ssl(boost::asio::io_service& io_service, std::string host, std::string port,
       boost::posix_time::time_duration timeout);
 
   ~ssl();
@@ -30,17 +29,11 @@ public:
 
   void resolve(ssl_ptr self, connect_cb cb);
 
-  void on_resolve(
-      ssl_ptr self,
-      connect_cb cb,
-      boost::system::error_code ec,
-      boost::asio::ip::tcp::resolver::iterator iterator);
+  void on_resolve(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
+                  boost::asio::ip::tcp::resolver::iterator iterator);
 
-  void on_connect(
-      ssl_ptr self,
-      connect_cb cb,
-      boost::system::error_code ec,
-      boost::asio::ip::tcp::resolver::iterator);
+  void on_connect(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
+                  boost::asio::ip::tcp::resolver::iterator);
 
   void on_handshake(ssl_ptr self, connect_cb cb, boost::system::error_code ec);
 
