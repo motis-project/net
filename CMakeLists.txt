@@ -6,8 +6,9 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE_CXX
 cmake_minimum_required(VERSION 3.10)
 project(net)
 
-add_subdirectory(external_lib/libressl EXCLUDE_FROM_ALL)
-add_subdirectory(external_lib/zlib EXCLUDE_FROM_ALL)
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/deps")
+  add_subdirectory(deps)
+endif()
 
 if (MSVC)
   set(Boost_USE_STATIC_LIBS ON)
