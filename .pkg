@@ -1,2 +1,8 @@
-git@git.motis-project.de:lib/libressl.git cb6c28def9998b9e7abbc9df11a2ae4d35331012
-git@git.motis-project.de:lib/zlib.git     412ab9a1f440f4ce1331d4226b6c814470524e19
+[libressl]
+  url=git@git.motis-project.de:lib/libressl.git
+  branch=master
+  commit=cb6c28def9998b9e7abbc9df11a2ae4d35331012
+[zlib]
+  url=git@git.motis-project.de:lib/zlib.git
+  branch=master
+  commit=412ab9a1f440f4ce1331d4226b6c814470524e19
