@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "boost/asio/post.hpp"
 #include "boost/beast/core/buffers_to_string.hpp"
 #include "boost/beast/websocket.hpp"
 #include "boost/beast/websocket/ssl.hpp"
@@ -31,7 +32,7 @@ ws_session::~ws_session() {
   }
 }
 
-void ws_session::stop() { ws_.lowest_layer().close(); }
+void ws_session::stop() { boost::beast::get_lowest_layer(ws_).close(); }
 
 void ws_session::run(web_server::http_req_t const& update_req) {
   ws_.async_accept(update_req, std::bind(&ws_session::loop, shared_from_this(),
@@ -96,8 +97,9 @@ void send_next(std::shared_ptr<ws_session> const& s) {
           boost::system::error_code const& ec, size_t bytes_transferred) {
         s->send_active_ = false;
         send_next(s);
-        s->ws_.get_executor().context().post(
-            [s, cb, ec, bytes_transferred]() { cb(ec, bytes_transferred); });
+        asio::post(s->ws_.get_executor(), [s, cb, ec, bytes_transferred]() {
+          cb(ec, bytes_transferred);
+        });
       });
   s->send_active_ = true;
 }

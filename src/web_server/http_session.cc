@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "boost/asio/post.hpp"
 #include "boost/beast/http.hpp"
 #include "boost/beast/version.hpp"
 #include "boost/beast/websocket/rfc6455.hpp"
@@ -48,7 +49,7 @@ http_session::~http_session() { session_mgr_.remove(this); }
 
 void http_session::run() { loop({}, 0, false); }
 
-void http_session::stop() { stream_.lowest_layer().close(); }
+void http_session::stop() { boost::beast::get_lowest_layer(stream_).close(); }
 
 #include "boost/asio/yield.hpp"
 void http_session::loop(boost::system::error_code ec,
@@ -80,7 +81,8 @@ void http_session::loop(boost::system::error_code ec,
         auto websocket = std::make_shared<ws_session>(
             session_mgr_, std::move(stream_), ws_msg_cb_, ws_close_cb_);
         if (ws_open_cb_) {
-          websocket->ws_.get_executor().context().post(
+          asio::post(
+              websocket->ws_.get_executor(),
               [cb = &ws_open_cb_, websocket, this]() { (*cb)(websocket); });
         }
         websocket->run(std::move(req_));
@@ -91,9 +93,9 @@ void http_session::loop(boost::system::error_code ec,
         yield http_req_cb_(std::move(req_), [this, self = shared_from_this()](
                                                 web_server::http_res_t res) {
           res_ = std::move(res);
-          stream_.lowest_layer().get_executor().context().post(
-              std::bind(&http_session::loop, self, boost::system::error_code{},
-                        0, false));
+          asio::post(boost::beast::get_lowest_layer(stream_).get_executor(),
+                     std::bind(&http_session::loop, self,
+                               boost::system::error_code{}, 0, false));
         });
       } else {
         res_ = not_found(req_);
