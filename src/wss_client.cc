@@ -4,6 +4,7 @@
 #include <queue>
 
 #include "boost/asio.hpp"
+#include "boost/asio/post.hpp"
 #include "boost/beast/core.hpp"
 #include "boost/beast/websocket.hpp"
 #include "boost/beast/websocket/ssl.hpp"
@@ -98,7 +99,7 @@ struct wss_client::impl : public boost::asio::coroutine,
   }
 
   void send(std::string const& msg, bool binary) {
-    ws_.lowest_layer().get_executor().context().post([=]() {
+    asio::post(boost::beast::get_lowest_layer(ws_).get_executor(), [=]() {
       queue_.emplace(msg, binary);
       if (!send_active_) {
         send_next(shared_from_this());

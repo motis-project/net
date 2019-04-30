@@ -6,7 +6,7 @@ gcc-release:
   tags:
     - bionic
   script:
-    - export BOOST_ROOT=/opt/boost_1_67_0-gcc-7
+    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
     - git submodule update --init --recursive
     - mkdir -p build-release
     - cd build-release
@@ -20,7 +20,7 @@ clang-debug-asan:
   script:
     - export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
     - export CXXFLAGS="-fsanitize=address -fno-omit-frame-pointer"
-    - export BOOST_ROOT=/opt/boost_1_67_0-gcc-7
+    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
     - export CXX=clang++
     - export CC=clang
     - git submodule update --init --recursive
@@ -34,7 +34,7 @@ gcc-debug-valgrind:
   tags:
     - bionic
   script:
-    - export BOOST_ROOT=/opt/boost_1_67_0-gcc-7
+    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
     #- export CXXFLAGS="-D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" TODO(felix) currently not working with OSRM
     - git submodule update --init --recursive
     - mkdir -p build-gcc-debug-valgrind
@@ -50,7 +50,7 @@ msvc-release:
     - set WD=%cd%
     - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
     - cd %WD%
-    - set BOOST_ROOT=C:\boost_1_67_0
+    - set BOOST_ROOT=C:\boost_1_70_0
     - git submodule update --init --recursive
     - mkdir build-msvc-release
     - cd build-msvc-release
@@ -65,7 +65,7 @@ msvc-debug:
     - set WD=%cd%
     - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
     - cd %WD%
-    - set BOOST_ROOT=C:\boost_1_67_0
+    - set BOOST_ROOT=C:\boost_1_70_0
     - git submodule update --init --recursive
     - mkdir build-msvc-debug
     - cd build-msvc-debug
@@ -77,7 +77,7 @@ clang-format:
   tags:
     - bionic
   script:
-    - export BOOST_ROOT=/opt/boost_1_67_0-gcc-7
+    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
     - git submodule update --init --recursive
     - mkdir build-clang-format
     - cd build-clang-format

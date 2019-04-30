@@ -4,7 +4,6 @@
 #include <set>
 
 #include "boost/asio/ip/tcp.hpp"
-
 #include "net/web_server/http_session.h"
 #include "net/web_server/ssl_stream.h"
 
@@ -29,7 +28,7 @@ struct web_server::impl {
 
   void init(std::string const& host, std::string const& port,
             boost::system::error_code& ec) {
-    asio::ip::tcp::resolver resolver{socket_.get_executor().context()};
+    asio::ip::tcp::resolver resolver{socket_.get_executor()};
     asio::ip::tcp::endpoint endpoint = *resolver.resolve({host, port});
 
     acceptor_.open(endpoint.protocol(), ec);
