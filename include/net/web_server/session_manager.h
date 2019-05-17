@@ -7,6 +7,7 @@ namespace net {
 struct session {
   virtual ~session() = default;
   virtual void stop() = 0;
+  bool is_websocket_{false};
 };
 
 struct session_manager {

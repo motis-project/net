@@ -22,6 +22,7 @@ ws_session::ws_session(session_manager& session_mgr,
       ws_{std::move(stream)},
       ws_msg_cb_{ws_msg_cb},
       ws_close_cb_{ws_close_cb} {
+  is_websocket_ = true;
   session_mgr_.add(this);
 }
 
@@ -116,24 +117,15 @@ void ws_send(std::shared_ptr<ws_session> const& s, std::string msg,
   send_next(s);
 }
 
-void ws_broadcast(std::set<session*> sessions, std::string msg,
+void ws_broadcast(std::set<session*> const& sessions, std::string msg,
                   ws_msg_type type,
                   std::function<void(boost::system::error_code, size_t)> cb) {
-  if (sessions.empty()) {
-    return;
+  for (auto s : sessions) {
+    if (s->is_websocket_) {
+      ws_send(reinterpret_cast<ws_session*>(s)->shared_from_this(), msg, type,
+              cb);
+    }
   }
-  auto const next_it = begin(sessions);
-  auto const session = *next_it;
-  sessions.erase(next_it);
-
-  auto const s = reinterpret_cast<ws_session*>(session);
-  s->send_queue_.emplace(msg, type,
-                         [sessions, msg, type, cb](boost::system::error_code ec,
-                                                   size_t bytes_transferred) {
-                           ws_broadcast(sessions, msg, type, cb);
-                           cb(ec, bytes_transferred);
-                         });
-  send_next(s->shared_from_this());
 }
 
 void ws_broadcast(session_manager const* session_mgr, std::string msg,
