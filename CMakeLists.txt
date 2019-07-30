@@ -28,7 +28,7 @@ file(GLOB_RECURSE web-server-src src/web_server/*.cc)
 add_library(web-server ${web-server-src})
 target_compile_options(web-server PUBLIC ${net-compile-flags})
 target_link_libraries(web-server ${Boost_SYSTEM_LIBRARY} ssl crypto)
-target_include_directories(web-server PUBLIC include ${Boost_INCLUDE_DIR})
+target_include_directories(web-server SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 
 file(GLOB_RECURSE wss-client-src src/wss_client.cc)
 add_library(wss-client ${wss-client-src})
