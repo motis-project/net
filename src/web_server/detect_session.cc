@@ -2,9 +2,8 @@
 
 #include <iostream>
 
-#include "boost/asio/post.hpp"
+//#include "boost/asio/post.hpp"
 #include "boost/beast/core/detect_ssl.hpp"
-#include "boost/beast/version.hpp"
 
 #include "net/web_server/http_session.h"
 
@@ -38,7 +37,7 @@ detect_session::~detect_session() { session_mgr_.remove(this); }
 
 void detect_session::run() {
   std::cout << "detect_session::run()" << std::endl;
-  // stream_.expires_after(std::chrono::seconds(30));
+  stream_.expires_after(std::chrono::seconds(30));
   boost::beast::async_detect_ssl(
       stream_, buffer_,
       boost::beast::bind_front_handler(&detect_session::on_detect,

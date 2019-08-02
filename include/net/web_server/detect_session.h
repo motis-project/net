@@ -39,14 +39,10 @@ private:
 
   session_manager& session_mgr_;
 
-  // boost::beast::tcp_stream stream_;
-  boost::asio::ip::tcp::socket stream_;
+  boost::beast::tcp_stream stream_;
   boost::asio::ssl::context& ctx_;
 
   boost::beast::flat_buffer buffer_;
-
-  web_server::http_req_t req_;
-  web_server::http_res_t res_;
 
   web_server::http_req_cb_t& http_req_cb_;
   web_server::ws_msg_cb_t& ws_msg_cb_;
