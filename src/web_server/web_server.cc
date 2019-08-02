@@ -4,8 +4,7 @@
 #include <set>
 
 #include "boost/asio/ip/tcp.hpp"
-#include "net/web_server/http_session.h"
-#include "net/web_server/ssl_stream.h"
+#include "net/web_server/detect_session.h"
 
 namespace asio = boost::asio;
 namespace ssl = asio::ssl;
@@ -78,9 +77,9 @@ struct web_server::impl {
     if (ec) {
       fail(ec, "main accept");
     } else {
-      std::make_shared<http_session>(session_mgr_, std::move(socket_), ctx_,
-                                     http_req_cb_, ws_msg_cb_, ws_open_cb_,
-                                     ws_close_cb_)
+      std::make_shared<detect_session>(session_mgr_, std::move(socket_), ctx_,
+                                       http_req_cb_, ws_msg_cb_, ws_open_cb_,
+                                       ws_close_cb_)
           ->run();
     }
     do_accept();

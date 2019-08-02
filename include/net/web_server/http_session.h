@@ -6,9 +6,9 @@
 #include "boost/asio/ip/tcp.hpp"
 #include "boost/asio/ssl/context.hpp"
 #include "boost/beast/core/flat_buffer.hpp"
+#include "boost/beast/ssl/ssl_stream.hpp"
 
 #include "net/web_server/session_manager.h"
-#include "net/web_server/ssl_stream.h"
 #include "net/web_server/web_server.h"
 
 namespace net {
@@ -18,6 +18,7 @@ struct http_session : public session,
                       public boost::asio::coroutine {
   http_session(session_manager& session_mgr,
                boost::asio::ip::tcp::socket socket,
+               boost::beast::flat_buffer&& buffer,
                boost::asio::ssl::context& ctx,
                web_server::http_req_cb_t& http_req_cb,
                web_server::ws_msg_cb_t& ws_msg_cb,
@@ -40,7 +41,7 @@ private:
 
   session_manager& session_mgr_;
 
-  ssl_stream<boost::asio::ip::tcp::socket> stream_;
+  boost::beast::ssl_stream<boost::asio::ip::tcp::socket> stream_;
 
   boost::beast::flat_buffer buffer_;
 

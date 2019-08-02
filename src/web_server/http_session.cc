@@ -31,6 +31,7 @@ web_server::http_res_t not_found(web_server::http_req_t const& req) {
 }
 
 http_session::http_session(session_manager& session_mgr, tcp::socket socket,
+                           boost::beast::flat_buffer&& buffer,
                            ssl::context& ctx,
                            web_server::http_req_cb_t& http_req_cb,
                            web_server::ws_msg_cb_t& ws_msg_cb,
@@ -38,6 +39,7 @@ http_session::http_session(session_manager& session_mgr, tcp::socket socket,
                            web_server::ws_close_cb_t& ws_close_cb)
     : session_mgr_{session_mgr},
       stream_{std::move(socket), ctx},
+      buffer_{std::move(buffer)},
       http_req_cb_{http_req_cb},
       ws_msg_cb_{ws_msg_cb},
       ws_open_cb_{ws_open_cb},
@@ -52,16 +54,18 @@ void http_session::run() { loop({}, 0, false); }
 void http_session::stop() { boost::beast::get_lowest_layer(stream_).close(); }
 
 #include "boost/asio/yield.hpp"
-void http_session::loop(boost::system::error_code ec,
-                        std::size_t /* bytes_transferred */, bool close) {
+void http_session::loop(boost::system::error_code ec, std::size_t bytes_used,
+                        bool close) {
   reenter(*this) {
     yield stream_.async_handshake(
-        ssl::stream_base::server,
+        ssl::stream_base::server, buffer_.data(),
         std::bind(&http_session::loop, shared_from_this(),
-                  std::placeholders::_1, 0, false));
+                  std::placeholders::_1, std::placeholders::_2, false));
     if (ec) {
       return fail(ec, "http handshake");
     }
+
+    buffer_.consume(bytes_used);
 
     while (true) {
       req_ = {};

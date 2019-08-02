@@ -15,7 +15,7 @@ using tcp = asio::ip::tcp;
 namespace net {
 
 ws_session::ws_session(session_manager& session_mgr,
-                       ssl_stream<tcp::socket> stream,  //
+                       boost::beast::ssl_stream<tcp::socket> stream,  //
                        web_server::ws_msg_cb_t& ws_msg_cb,
                        web_server::ws_close_cb_t& ws_close_cb)
     : session_mgr_{session_mgr},
