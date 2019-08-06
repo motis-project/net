@@ -1,12 +1,9 @@
 #include "net/web_server/web_server.h"
 
-#include <iostream>
-#include <set>
-
 #include "boost/asio/ip/tcp.hpp"
 #include "boost/asio/strand.hpp"
+#include "net/web_server/detect_session.h"
 #include "net/web_server/fail.h"
-#include "net/web_server/web_server_impl.h"
 
 namespace asio = boost::asio;
 namespace ssl = asio::ssl;
