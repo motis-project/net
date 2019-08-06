@@ -32,8 +32,9 @@ public:
                              boost::system::error_code)>
       callback;
 
-  basic_http_client(boost::asio::io_service& ios, url u,
-                    boost::posix_time::time_duration timeout = DEFAULT_TIMEOUT);
+  basic_http_client(
+      boost::asio::io_service& ios, url const& u,
+      boost::posix_time::time_duration const& timeout = DEFAULT_TIMEOUT);
 
   void query(request& req, callback cb);
 

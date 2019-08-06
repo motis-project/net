@@ -12,7 +12,7 @@ public:
   url() = default;
   url(std::string host, std::string port, std::string path);
   url(const std::string& url);
-  url(char const* url);
+  url(char const* address);
 
   std::string str() const { return str_; }
   std::string host() const { return host_; }

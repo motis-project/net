@@ -5,10 +5,10 @@ namespace asio = boost::asio;
 namespace net {
 
 tcp::tcp(asio::io_service& ios, std::string host, std::string port,
-         boost::posix_time::time_duration timeout)
+         boost::posix_time::time_duration const& timeout)
     : resolver_(ios),
       socket_(ios),
-      req_timeout_timer_(ios, std::move(timeout)),
+      req_timeout_timer_(ios, timeout),
       host_(std::move(host)),
       port_(std::move(port)),
       use_timeout_(true),
@@ -64,7 +64,7 @@ void tcp::on_resolve(tcp_ptr self, connect_cb cb, boost::system::error_code ec,
                      asio::ip::tcp::resolver::iterator iterator) {
   if (!ec) {
     return asio::async_connect(
-        socket_, iterator,
+        socket_, std::move(iterator),
         std::bind(&tcp::on_connect, this, std::move(self), std::move(cb),
                   std::placeholders::_1, std::placeholders::_2));
   } else {
@@ -73,17 +73,18 @@ void tcp::on_resolve(tcp_ptr self, connect_cb cb, boost::system::error_code ec,
   }
 }
 
-void tcp::on_connect(tcp_ptr self, connect_cb cb, boost::system::error_code ec,
-                     asio::ip::tcp::resolver::iterator) {
+void tcp::on_connect(tcp_ptr self, const connect_cb& cb,
+                     boost::system::error_code ec,
+                     asio::ip::tcp::resolver::iterator const&) {
   if (!ec) {
     connected_ = true;
   } else {
     finally(ec);
   }
-  return cb(self, ec);
+  return cb(std::move(self), ec);
 }
 
-void tcp::timer_callback(tcp_ptr, boost::system::error_code const& ec) {
+void tcp::timer_callback(const tcp_ptr&, boost::system::error_code const& ec) {
   if (asio::error::operation_aborted != ec) {
     cancel();
   }

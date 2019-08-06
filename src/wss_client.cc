@@ -34,19 +34,20 @@ struct wss_client::impl : public boost::asio::coroutine,
         host_{std::move(host)},
         port_{std::move(port)} {}
 
-  void run(std::function<void(error_code)> cb) {
-    loop(shared_from_this(), error_code{}, std::move(cb));
+  void run(std::function<void(error_code)> const& cb) {
+    loop(shared_from_this(), error_code{}, cb);
   }
 
 #include "boost/asio/yield.hpp"
-  void loop(std::shared_ptr<impl> me, error_code const ec,
-            std::function<void(error_code)> cb = nullptr,
-            tcp::resolver::results_type results = {}) {
+  void loop(std::shared_ptr<impl> const& me, error_code const ec,
+            std::function<void(error_code)> const& cb = nullptr,
+            tcp::resolver::results_type const& results = {}) {
     reenter(*this) {
       // Resolve endpoint.
       yield resolve_.async_resolve(
           host_, port_,
-          [me, cb](error_code ec, tcp::resolver::results_type endpoints) {
+          [me, cb](error_code ec,
+                   tcp::resolver::results_type const& endpoints) {
             me->loop(me, ec, cb, endpoints);
           });
       return_on_error("resolve");
@@ -93,8 +94,8 @@ struct wss_client::impl : public boost::asio::coroutine,
   }
 #include "boost/asio/unyield.hpp"
 
-  void on_connect(std::shared_ptr<impl> me, error_code ec,
-                  std::function<void(error_code)> cb = nullptr) {
+  void on_connect(std::shared_ptr<impl> const& me, error_code ec,
+                  std::function<void(error_code)> const& cb = nullptr) {
     loop(me, ec, cb);
   }
 
@@ -107,7 +108,7 @@ struct wss_client::impl : public boost::asio::coroutine,
     });
   }
 
-  void send_next(std::shared_ptr<impl> me) {
+  void send_next(std::shared_ptr<impl> const& me) {
     if (queue_.empty()) {
       send_active_ = false;
       return;
@@ -147,9 +148,8 @@ struct wss_client::impl : public boost::asio::coroutine,
 };
 
 wss_client::wss_client(asio::io_service& ios, asio::ssl::context& ctx,
-                       std::string host, std::string port)
-    : impl_{
-          std::make_shared<impl>(ios, ctx, std::move(host), std::move(port))} {}
+                       std::string const& host, std::string const& port)
+    : impl_{std::make_shared<impl>(ios, ctx, host, port)} {}
 
 wss_client::~wss_client() = default;
 
@@ -159,9 +159,9 @@ void wss_client::send(std::string const& msg, bool binary) {
   }
 }
 
-void wss_client::run(std::function<void(error_code)> cb) {
+void wss_client::run(const std::function<void(error_code)>& cb) {
   if (impl_) {
-    impl_->run(std::move(cb));
+    impl_->run(cb);
   }
 }
 

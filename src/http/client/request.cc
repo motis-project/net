@@ -2,19 +2,15 @@
 
 #include <sstream>
 
-#include "boost/lexical_cast.hpp"
-
-namespace net {
-namespace http {
-namespace client {
+namespace net::http::client {
 
 static char const* method_to_string[] = {"GET", "POST", "DELETE", "PUT",
                                          "OPTIONS"};
 
-request::request(std::string addr, enum method m, request::str_map hdr,
+request::request(std::string const& addr, enum method m, request::str_map hdr,
                  std::string body)
-    : address(std::move(addr)),
-      req_method(std::move(m)),
+    : address(addr),
+      req_method(m),
       headers(std::move(hdr)),
       body(std::move(body)) {}
 
@@ -31,7 +27,7 @@ std::string request::to_str() const {
   }
 
   if (!body.empty()) {
-    std::string len_str = boost::lexical_cast<std::string>(body.length());
+    auto len_str = std::to_string(body.length());
     request_stream << "Content-Length: " + len_str + "\r\n";
   }
 
@@ -41,6 +37,4 @@ std::string request::to_str() const {
   return request_stream.str();
 }
 
-}  // namespace client
-}  // namespace http
-}  // namespace net
+}  // namespace net::http::client

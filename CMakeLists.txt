@@ -72,6 +72,7 @@ add_custom_target(net-format-check
   find
       ${CMAKE_CURRENT_SOURCE_DIR}/include
       ${CMAKE_CURRENT_SOURCE_DIR}/src
+      ${CMAKE_CURRENT_SOURCE_DIR}/example
     -type f
     (
     -name "*.cc"

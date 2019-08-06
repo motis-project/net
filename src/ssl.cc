@@ -1,13 +1,15 @@
+#include <utility>
+
 #include "net/ssl.h"
 
 namespace net {
 
 ssl::ssl(boost::asio::io_service& io_service, std::string host,
-         std::string port, boost::posix_time::time_duration timeout)
+         std::string port, boost::posix_time::time_duration const& timeout)
     : ctx_(boost::asio::ssl::context::sslv23),
       resolver_(io_service),
       socket_(io_service, ctx_),
-      req_timeout_timer_(io_service, std::move(timeout)),
+      req_timeout_timer_(io_service, timeout),
       host_(std::move(host)),
       port_(std::move(port)),
       connected_(false) {
@@ -54,7 +56,7 @@ void ssl::on_resolve(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
                      boost::asio::ip::tcp::resolver::iterator iterator) {
   if (!ec) {
     return boost::asio::async_connect(
-        socket_.lowest_layer(), iterator,
+        socket_.lowest_layer(), std::move(iterator),
         std::bind(&ssl::on_connect, this, std::move(self), std::move(cb),
                   std::placeholders::_1, std::placeholders::_2));
   } else {
@@ -63,8 +65,9 @@ void ssl::on_resolve(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
   }
 }
 
-void ssl::on_connect(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
-                     boost::asio::ip::tcp::resolver::iterator) {
+void ssl::on_connect(ssl_ptr const& self, const connect_cb& cb,
+                     boost::system::error_code ec,
+                     boost::asio::ip::tcp::resolver::iterator const&) {
   if (!ec) {
     return socket_.async_handshake(
         boost::asio::ssl::stream_base::client,
@@ -75,17 +78,17 @@ void ssl::on_connect(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
   }
 }
 
-void ssl::on_handshake(ssl_ptr self, connect_cb cb,
+void ssl::on_handshake(ssl_ptr self, const connect_cb& cb,
                        boost::system::error_code ec) {
   if (!ec) {
     connected_ = true;
   } else {
     finally(ec);
   }
-  return cb(self, ec);
+  return cb(std::move(self), ec);
 }
 
-void ssl::timer_callback(ssl_ptr, boost::system::error_code const& ec) {
+void ssl::timer_callback(ssl_ptr const&, boost::system::error_code const& ec) {
   if (boost::asio::error::operation_aborted != ec) {
     cancel();
   }

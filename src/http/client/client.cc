@@ -5,7 +5,6 @@
 #include "boost/iostreams/copy.hpp"
 #include "boost/iostreams/filter/gzip.hpp"
 #include "boost/iostreams/filtering_streambuf.hpp"
-#include "boost/lexical_cast.hpp"
 #include "boost/regex.hpp"
 
 #include "net/ssl.h"
@@ -14,16 +13,15 @@
 namespace asio = boost::asio;
 using boost::system::error_code;
 
-namespace net {
-namespace http {
-namespace client {
+namespace net::http::client {
 
-boost::regex chunk_size_rx_("\r?\n?[0-9a-fA-F]+\r\n");
+boost::regex chunk_size_rx("\r?\n?[0-9a-fA-F]+\r\n");
 
 template <typename C>
 basic_http_client<C>::basic_http_client(
-    asio::io_service& ios, url u, boost::posix_time::time_duration timeout)
-    : C(ios, u.host(), u.port(), std::move(timeout)),
+    asio::io_service& ios, url const& u,
+    boost::posix_time::time_duration const& timeout)
+    : C(ios, u.host(), u.port(), timeout),
       response_stream_(&buf_),
       status_code_(0),
       length_(0) {}
@@ -31,7 +29,7 @@ basic_http_client<C>::basic_http_client(
 template <typename C>
 void basic_http_client<C>::query(request& req, callback cb) {
   if (!req.body.empty()) {
-    auto content_length = boost::lexical_cast<std::string>(req.body.length());
+    auto content_length = std::to_string(req.body.length());
     req.headers.insert(std::make_pair("Content-Length", content_length));
   }
 
@@ -113,7 +111,7 @@ void basic_http_client<C>::transfer(std::shared_ptr<C> self, callback cb,
         }
       } else if (header_.find("transfer-encoding") != header_.end()) {
         while (true) {
-          yield asio::async_read_until(my.socket_, buf_, chunk_size_rx_, re);
+          yield asio::async_read_until(my.socket_, buf_, chunk_size_rx, re);
 
           chunk_size = 0;
           response_stream_ >> std::hex >> chunk_size;
@@ -157,7 +155,7 @@ void basic_http_client<C>::respond(callback cb, std::shared_ptr<C> self,
     ec = error_code();
   }
 
-  typedef boost::reference_wrapper<basic_http_client> http_stream_ref;
+  using http_stream_ref = boost::reference_wrapper<basic_http_client>;
   boost::iostreams::stream<http_stream_ref> s(boost::ref(*this));
 
   std::stringstream response;
@@ -203,7 +201,7 @@ void basic_http_client<C>::read_header() {
     std::string header_value = header.substr(seperator_pos + 2);
 
     if (key_to_lower == "set-cookie") {
-      std::size_t val_end_pos = header_value.find(";");
+      std::size_t val_end_pos = header_value.find(';');
       if (val_end_pos != std::string::npos) {
         header_["set-cookie"] += header_value.substr(0, val_end_pos + 1);
       }
@@ -238,6 +236,4 @@ std::size_t basic_http_client<C>::copy_content(std::size_t buffer_size) {
 template class basic_http_client<ssl>;
 template class basic_http_client<tcp>;
 
-}  // namespace client
-}  // namespace http
-}  // namespace net
+}  // namespace net::http::client

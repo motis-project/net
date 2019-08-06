@@ -17,7 +17,7 @@ public:
   typedef std::function<void(ssl_ptr, boost::system::error_code)> connect_cb;
 
   ssl(boost::asio::io_service& io_service, std::string host, std::string port,
-      boost::posix_time::time_duration timeout);
+      boost::posix_time::time_duration const& timeout);
 
   ~ssl();
 
@@ -32,12 +32,14 @@ public:
   void on_resolve(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
                   boost::asio::ip::tcp::resolver::iterator iterator);
 
-  void on_connect(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
-                  boost::asio::ip::tcp::resolver::iterator);
+  void on_connect(ssl_ptr const& self, const connect_cb& cb,
+                  boost::system::error_code ec,
+                  boost::asio::ip::tcp::resolver::iterator const&);
 
-  void on_handshake(ssl_ptr self, connect_cb cb, boost::system::error_code ec);
+  void on_handshake(ssl_ptr self, const connect_cb& cb,
+                    boost::system::error_code ec);
 
-  void timer_callback(ssl_ptr, boost::system::error_code const& ec);
+  void timer_callback(ssl_ptr const&, boost::system::error_code const& ec);
 
   void finally(boost::system::error_code const& ec);
 

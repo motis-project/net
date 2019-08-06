@@ -6,9 +6,7 @@
 
 #include "boost/regex.hpp"
 
-namespace net {
-namespace http {
-namespace client {
+namespace net::http::client {
 
 static boost::regex url_regex("(.*://)([a-zA-Z0-9\\.\\-]+)(:[0-9]*)?(.*)");
 
@@ -45,6 +43,4 @@ url::url(std::string const& url) : str_(url) {
 
 url::url(char const* address) : url(std::string(address)) {}
 
-}  // namespace client
-}  // namespace http
-}  // namespace net
+}  // namespace net::http::client

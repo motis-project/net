@@ -16,7 +16,7 @@ public:
   typedef std::function<void(tcp_ptr, boost::system::error_code)> connect_cb;
 
   tcp(boost::asio::io_service&, std::string host, std::string port,
-      boost::posix_time::time_duration timeout);
+      boost::posix_time::time_duration const& timeout);
 
   tcp(boost::asio::io_service&, std::string host, std::string port);
 
@@ -33,10 +33,11 @@ public:
   void on_resolve(tcp_ptr self, connect_cb cb, boost::system::error_code ec,
                   boost::asio::ip::tcp::resolver::iterator iterator);
 
-  void on_connect(tcp_ptr self, connect_cb cb, boost::system::error_code ec,
-                  boost::asio::ip::tcp::resolver::iterator);
+  void on_connect(tcp_ptr self, const connect_cb& cb,
+                  boost::system::error_code ec,
+                  boost::asio::ip::tcp::resolver::iterator const&);
 
-  void timer_callback(tcp_ptr self, boost::system::error_code const& ec);
+  void timer_callback(const tcp_ptr& self, boost::system::error_code const& ec);
 
   void finally(boost::system::error_code const& ec);
 
