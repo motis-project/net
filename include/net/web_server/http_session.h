@@ -43,10 +43,8 @@ struct http_session {
 
   // This queue is used for HTTP pipelining.
   struct queue {
-    enum {
-      // Maximum number of responses we will queue
-      limit = 8
-    };
+    // Maximum number of responses we will queue
+    static constexpr auto const LIMIT = 8;
 
     // The type-erased, saved work item
     struct work {
@@ -55,14 +53,14 @@ struct http_session {
     };
 
     explicit queue(http_session& self) : self_(self) {
-      static_assert(limit > 0, "queue limit must be positive");
-      items_.reserve(limit);
+      static_assert(LIMIT > 0, "queue limit must be positive");
+      items_.reserve(LIMIT);
     }
 
     queue(queue const&) = delete;
 
     // Returns `true` if we have reached the queue limit
-    bool is_full() const { return items_.size() >= limit; }
+    bool is_full() const { return items_.size() >= LIMIT; }
 
     // Called when a message finishes sending
     // Returns `true` if the caller should initiate a read

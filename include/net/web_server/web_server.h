@@ -19,8 +19,7 @@ enum class ws_msg_type { TEXT, BINARY };
 
 struct ws_session {
   using send_cb_t = std::function<void(boost::system::error_code, size_t)>;
-  virtual void send(std::string&& msg, ws_msg_type type, send_cb_t cb) = 0;
-  virtual void send(std::string const& msg, ws_msg_type type, send_cb_t cb) = 0;
+  virtual void send(std::string msg, ws_msg_type type, send_cb_t cb) = 0;
 };
 
 using ws_session_ptr = std::weak_ptr<ws_session>;

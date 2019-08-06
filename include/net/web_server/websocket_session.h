@@ -42,13 +42,8 @@ struct websocket_session : public ws_session {
     do_accept(std::move(req));
   }
 
-  void send(std::string&& msg, ws_msg_type type, send_cb_t cb) override {
+  void send(std::string msg, ws_msg_type type, send_cb_t cb) override {
     send_queue_.emplace(std::move(msg), type, cb);
-    send_next();
-  }
-
-  void send(std::string const& msg, ws_msg_type type, send_cb_t cb) override {
-    send_queue_.emplace(msg, type, cb);
     send_next();
   }
 
