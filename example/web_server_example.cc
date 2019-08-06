@@ -139,22 +139,24 @@ int main() {
 
   boost::asio::io_context ioc;
   web_server s{ioc, ctx};
+
   s.on_ws_msg([](ws_session_ptr s, std::string const& msg, ws_msg_type type) {
     std::cout << "received: \"" << msg << "\"" << std::endl;
-    ws_send(s.lock(), msg, type, [](boost::system::error_code ec, size_t) {
+    s.lock()->send(msg, type, [](boost::system::error_code ec, size_t) {
       if (ec) {
         std::cout << "send ec: " << ec.message() << "\n";
       }
     });
   });
-  s.on_ws_open([](ws_session_ptr s) {
-    std::cout << "session open: " << s.lock().get() << "\n";
+  s.on_ws_open([](ws_session_ptr s, bool ssl) {
+    std::cout << "session open: " << s.lock().get() << " ssl=" << ssl << "\n";
   });
   s.on_ws_close([](void* s) { std::cout << "session close: " << s << "\n"; });
   s.on_http_request([](web_server::http_req_t const& req,
-                       web_server::http_res_cb_t const& cb) {
+                       web_server::http_res_cb_t const& cb, bool ssl) {
+    boost::ignore_unused(ssl);
     auto const server_error = [&req](std::string const& what) {
-      web_server::http_res_t res{
+      web_server::string_res_t res{
           boost::beast::http::status::internal_server_error, req.version()};
       res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
       res.set(boost::beast::http::field::content_type, "text/html");
@@ -166,12 +168,16 @@ int main() {
     return cb(server_error("NOTHING TO SEE HERE - GO AWAY!"));
   });
   boost::system::error_code ec;
-  s.init("0.0.0.0", "https", ec);
+  s.init("0.0.0.0", "9000", ec);
   if (ec) {
     std::cout << "init error: " << ec.message() << "\n";
     return 1;
   }
-  stop_handler stop(ioc, [&]() { s.stop(); });
+  stop_handler stop(ioc, [&]() {
+    s.stop();
+    ioc.stop();
+  });
+  std::cout << "web server running\n";
   s.run();
   ioc.run();
 }
