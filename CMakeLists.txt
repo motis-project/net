@@ -24,6 +24,12 @@ else()
   set(net-compile-flags "-std=c++17")
 endif()
 
+option(NET_LINT "Run clang-tidy with the compiler." OFF)
+if(NET_LINT)
+  # clang-tidy will be run on all targets defined hereafter
+  include(cmake/clang-tidy.cmake)
+endif()
+
 file(GLOB_RECURSE web-server-src src/web_server/*.cc)
 add_library(web-server ${web-server-src})
 target_compile_options(web-server PUBLIC ${net-compile-flags})

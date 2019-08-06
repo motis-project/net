@@ -72,6 +72,22 @@ msvc-debug:
     - cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DZLIB_ROOT=C:\zlib-1.2.8 ..
     - ninja -j8 http-client net-web_server-sample net-wss_client-sample
 
+# Clang-Tidy
+clang-tidy:
+  tags:
+    - bionic
+    - clang-8
+  script:
+    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
+    - export PATH=/opt/clang-8.0/bin:$PATH
+    - export CXX=clang++
+    - export CC=clang
+    - mkdir build-clang-tidy
+    - cd build-clang-tidy
+    - cmake -GNinja -DNET_LINT=ON ..
+    - ninja
+
+
 # Clang-Format
 clang-format:
   tags:
