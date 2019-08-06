@@ -36,7 +36,7 @@ target_compile_options(web-server PUBLIC ${net-compile-flags})
 target_link_libraries(web-server ${Boost_SYSTEM_LIBRARY} ssl crypto)
 target_include_directories(web-server SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 if(MSVC)
-  set_target_properties(motis-routing PROPERTIES COMPILE_FLAGS "${net-compile-flags} /bigobj")
+  set_target_properties(web-server PROPERTIES COMPILE_FLAGS "${net-compile-flags} /bigobj")
 endif()
 
 file(GLOB_RECURSE wss-client-src src/wss_client.cc)
