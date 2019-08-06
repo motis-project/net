@@ -92,11 +92,11 @@ clang-tidy:
 clang-format:
   tags:
     - bionic
+    - clang-8
   script:
     - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
-    - git submodule update --init --recursive
+    - export PATH=/opt/clang-8.0/bin:$PATH
     - mkdir build-clang-format
     - cd build-clang-format
     - cmake -GNinja ..
     - ninja net-format-check
-
