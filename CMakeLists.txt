@@ -13,9 +13,7 @@ if (MSVC)
   set(Boost_USE_MULTITHREADED ON)
   set(Boost_USE_STATIC_RUNTIME ON)
 endif()
-find_package(Boost COMPONENTS system iostreams regex REQUIRED)
-include_directories(SYSTEM ${Boost_INCLUDE_DIR})
-link_directories(${Boost_LIBRARY_DIRS})
+find_package(Boost 1.70.0 REQUIRED COMPONENTS system iostreams regex)
 add_definitions(/DBOOST_ALL_NO_LIB=1)
 
 option(NET_LINT "Run clang-tidy with the compiler." OFF)
@@ -38,6 +36,7 @@ add_library(wss-client ${wss-client-src})
 target_compile_features(wss-client PUBLIC cxx_std_17)
 target_link_libraries(wss-client ${Boost_SYSTEM_LIBRARY} ssl crypto)
 target_include_directories(wss-client PUBLIC include)
+target_include_directories(wss-client SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 
 file(GLOB_RECURSE http-client-src src/http/client/*.cc)
 add_library(http-client
@@ -55,18 +54,22 @@ target_link_libraries(http-client
   crypto
 )
 target_include_directories(http-client PUBLIC include)
+target_include_directories(http-client SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 
 add_executable(net-web_server-sample example/web_server_example.cc)
 target_link_libraries(net-web_server-sample web-server)
 target_compile_features(net-web_server-sample PUBLIC cxx_std_17)
+target_include_directories(net-web_server-sample SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 
 add_executable(net-wss_client-sample example/wss_client_example.cc)
 target_link_libraries(net-wss_client-sample wss-client)
 target_compile_features(net-wss_client-sample PUBLIC cxx_std_17)
+target_include_directories(net-wss_client-sample SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 
 add_executable(net-http_client-sample example/https_example.cc)
 target_link_libraries(net-http_client-sample http-client)
 target_compile_features(net-http_client-sample PUBLIC cxx_std_17)
+target_include_directories(net-http_client-sample SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 
 add_custom_target(net-format-check
   find
