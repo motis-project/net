@@ -166,7 +166,7 @@ void basic_http_client<C>::respond(callback cb, std::shared_ptr<C> self,
       filter.push(boost::iostreams::gzip_decompressor());
       filter.push(s);
       boost::iostreams::copy(filter, response);
-    } catch (const boost::iostreams::gzip_error& e) {
+    } catch (const boost::iostreams::gzip_error&) {
       using namespace boost::system;
       error_code ec(errc::illegal_byte_sequence, system_category());
       return cb(self, {header_, ""}, ec);

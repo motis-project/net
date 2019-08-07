@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
         return;
       }
       std::cout << "connected\n";
-      for (auto i = 1u; i <= num_requests; ++i) {
+      for (auto i = 1; i <= num_requests; ++i) {
         c->send(req(i), false);
       }
     });
@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     });
     c->on_msg([&](std::string const& msg, bool /* binary */) {
       ++response_count;
-      printf("~~~ received %lu: [%s]\n", msg.size(), msg.c_str());
+      printf("~~~ received %zu: [%s]\n", msg.size(), msg.c_str());
       if (response_count >= num_requests) {
         c->stop();
       }
