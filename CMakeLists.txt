@@ -18,12 +18,6 @@ include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 add_definitions(/DBOOST_ALL_NO_LIB=1)
 
-if (MSVC)
-  set(net-compile-flags "/std:c++latest")
-else()
-  set(net-compile-flags "-std=c++17")
-endif()
-
 option(NET_LINT "Run clang-tidy with the compiler." OFF)
 if(NET_LINT)
   # clang-tidy will be run on all targets defined hereafter
@@ -32,7 +26,7 @@ endif()
 
 file(GLOB_RECURSE web-server-src src/web_server/*.cc)
 add_library(web-server ${web-server-src})
-target_compile_options(web-server PUBLIC ${net-compile-flags})
+target_compile_features(web-server PUBLIC cxx_std_17)
 target_link_libraries(web-server ${Boost_SYSTEM_LIBRARY} ssl crypto)
 target_include_directories(web-server SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 if(MSVC)
@@ -41,7 +35,7 @@ endif()
 
 file(GLOB_RECURSE wss-client-src src/wss_client.cc)
 add_library(wss-client ${wss-client-src})
-target_compile_options(wss-client PUBLIC ${net-compile-flags})
+target_compile_features(wss-client PUBLIC cxx_std_17)
 target_link_libraries(wss-client ${Boost_SYSTEM_LIBRARY} ssl crypto)
 target_include_directories(wss-client PUBLIC include)
 
@@ -51,7 +45,7 @@ add_library(http-client
   src/ssl.cc
   src/tcp.cc
 )
-target_compile_options(http-client PUBLIC ${net-compile-flags})
+target_compile_features(http-client PUBLIC cxx_std_17)
 target_link_libraries(http-client
   ${Boost_SYSTEM_LIBRARY}
   ${Boost_IOSTREAMS_LIBRARY}
@@ -64,12 +58,15 @@ target_include_directories(http-client PUBLIC include)
 
 add_executable(net-web_server-sample example/web_server_example.cc)
 target_link_libraries(net-web_server-sample web-server)
+target_compile_features(net-web_server-sample PUBLIC cxx_std_17)
 
 add_executable(net-wss_client-sample example/wss_client_example.cc)
 target_link_libraries(net-wss_client-sample wss-client)
+target_compile_features(net-wss_client-sample PUBLIC cxx_std_17)
 
 add_executable(net-http_client-sample example/https_example.cc)
 target_link_libraries(net-http_client-sample http-client)
+target_compile_features(net-http_client-sample PUBLIC cxx_std_17)
 
 add_custom_target(net-format-check
   find
