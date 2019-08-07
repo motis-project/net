@@ -78,8 +78,8 @@ clang-tidy:
     - bionic
     - clang-8
   script:
-    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
-    - export PATH=/opt/clang-8.0/bin:$PATH
+    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8-libc++
+    - export CXXFLAGS=-stdlib=libc++
     - export CXX=clang++
     - export CC=clang
     - mkdir build-clang-tidy
