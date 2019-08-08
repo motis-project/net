@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
@@ -59,6 +60,8 @@ struct web_server {
             boost::system::error_code& ec);
   void run();
   void stop();
+
+  void set_timeout(std::chrono::nanoseconds const& timeout);
 
   void on_http_request(http_req_cb_t);
   void on_ws_msg(ws_msg_cb_t);

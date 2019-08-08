@@ -58,6 +58,10 @@ struct web_server::impl {
 
   void stop() { acceptor_.close(); }
 
+  void set_timeout(std::chrono::nanoseconds const& timeout) {
+    timeout_ = timeout;
+  }
+
   void do_accept() {
     acceptor_.async_accept(
         asio::make_strand(ioc_),
@@ -73,7 +77,8 @@ struct web_server::impl {
       fail(ec, "main accept");
     } else {
       std::make_shared<detect_session>(std::move(socket), ctx_, http_req_cb_,
-                                       ws_msg_cb_, ws_open_cb_, ws_close_cb_)
+                                       ws_msg_cb_, ws_open_cb_, ws_close_cb_,
+                                       timeout_)
           ->run();
     }
     do_accept();
@@ -82,6 +87,8 @@ struct web_server::impl {
   asio::io_context& ioc_;
   ssl::context& ctx_;
   tcp::acceptor acceptor_;
+
+  std::chrono::nanoseconds timeout_{std::chrono::seconds(60)};
 
   http_req_cb_t http_req_cb_;
   ws_msg_cb_t ws_msg_cb_;
@@ -102,6 +109,10 @@ void web_server::init(std::string const& host, std::string const& port,
 void web_server::run() { impl_->run(); }
 
 void web_server::stop() { impl_->stop(); }
+
+void web_server::set_timeout(std::chrono::nanoseconds const& timeout) {
+  impl_->set_timeout(timeout);
+}
 
 void web_server::on_http_request(http_req_cb_t cb) {
   impl_->on_http_request(std::move(cb));
