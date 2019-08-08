@@ -26,7 +26,10 @@ inline void fail(boost::beast::error_code ec, char const* what) {
   // Therefore, if we see a short read here, it has occurred
   // after the message has been completed, so it is safe to ignore it.
 
-  if (ec == boost::asio::ssl::error::stream_truncated) return;
+  if (ec == boost::asio::ssl::error::stream_truncated ||
+      ec == boost::beast::error::timeout) {
+    return;
+  }
 
   std::cerr << what << ": " << ec.message() << "\n";
 }
