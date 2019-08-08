@@ -24,6 +24,11 @@ web_server::string_res_t server_error_response(
     std::string_view const& text = "Internal server error",
     std::string_view const& content_type = "text/html");
 
+web_server::string_res_t bad_request_response(
+    web_server::http_req_t const& req,
+    std::string_view const& text = "Bad request",
+    std::string_view const& content_type = "text/html");
+
 web_server::empty_res_t empty_response(
     web_server::http_req_t const& req,
     boost::beast::http::status status = boost::beast::http::status::ok,
