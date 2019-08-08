@@ -31,7 +31,7 @@ inline void fail(boost::beast::error_code ec, char const* what) {
     return;
   }
 
-  std::cerr << what << ": " << ec.message() << "\n";
+  std::cerr << "[net::web_server] " << what << ": " << ec.message() << "\n";
 }
 
 }  // namespace net

@@ -38,7 +38,8 @@ public:
         http_req_cb_(http_req_cb),
         ws_msg_cb_(ws_msg_cb),
         ws_open_cb_(ws_open_cb),
-        ws_close_cb_(ws_close_cb), timeout_(timeout) {}
+        ws_close_cb_(ws_close_cb),
+        timeout_(timeout) {}
 
   // Launch the detector
   void run() {
@@ -56,9 +57,9 @@ public:
 
     if (result) {
       // Launch SSL session
-      std::make_shared<ssl_http_session>(std::move(stream_), ctx_,
-                                         std::move(buffer_), http_req_cb_,
-                                         ws_msg_cb_, ws_open_cb_, ws_close_cb_, timeout_)
+      std::make_shared<ssl_http_session>(
+          std::move(stream_), ctx_, std::move(buffer_), http_req_cb_,
+          ws_msg_cb_, ws_open_cb_, ws_close_cb_, timeout_)
           ->run();
     } else {
       // Launch plain session

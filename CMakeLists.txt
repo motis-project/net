@@ -93,21 +93,22 @@ target_link_libraries(net-http_client-sample http-client)
 target_compile_features(net-http_client-sample PUBLIC cxx_std_17)
 target_include_directories(net-http_client-sample SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 
+find_program(CLANG_FORMAT_COMMAND NAMES clang-format clang-format-8)
 add_custom_target(net-format-check
-  find
-      ${CMAKE_CURRENT_SOURCE_DIR}/include
-      ${CMAKE_CURRENT_SOURCE_DIR}/src
-      ${CMAKE_CURRENT_SOURCE_DIR}/example
+  COMMAND find
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/example
     -type f
     (
-    -name "*.cc"
-    -o
-    -name "*.h"
+      -name "*.cc"
+      -o
+      -name "*.h"
     )
     -print0
-  | xargs -0 clang-format -i
-  COMMAND
-  git status --porcelain | xargs -I {} -0 test -z \"{}\"
+    | xargs -0 ${CLANG_FORMAT_COMMAND} -i
+  COMMAND git status --porcelain
+  COMMAND git status --porcelain | xargs -I {} -0 test -z \"{}\"
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "Checking source code formatting"
   VERBATIM
