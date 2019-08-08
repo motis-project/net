@@ -6,9 +6,10 @@ namespace http = boost::beast::http;
 
 namespace net {
 
-web_server::string_res_t string_response(
-    web_server::http_req_t const& req, std::string_view const& text,
-    http::status status, std::string_view const& content_type) {
+web_server::string_res_t string_response(web_server::http_req_t const& req,
+                                         std::string_view const& text,
+                                         http::status status,
+                                         std::string_view const& content_type) {
   web_server::string_res_t res{status, req.version()};
   res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
   res.set(http::field::content_type, content_type);
@@ -31,9 +32,9 @@ web_server::string_res_t server_error_response(
                          content_type);
 }
 
-web_server::empty_res_t empty_response(
-    web_server::http_req_t const& req, boost::beast::http::status status ,
-    std::string_view const& content_type) {
+web_server::empty_res_t empty_response(web_server::http_req_t const& req,
+                                       boost::beast::http::status status,
+                                       std::string_view const& content_type) {
   web_server::empty_res_t res{status, req.version()};
   res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
   res.set(http::field::content_type, content_type);
