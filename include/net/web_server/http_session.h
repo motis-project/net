@@ -13,24 +13,11 @@
 #include <vector>
 
 #include "net/web_server/fail.h"
+#include "net/web_server/responses.h"
 #include "net/web_server/web_server.h"
 #include "net/web_server/websocket_session.h"
 
 namespace net {
-
-boost::beast::http::response<boost::beast::http::string_body> not_found(
-    web_server::http_req_t const& req) {
-  boost::beast::http::response<boost::beast::http::string_body> res{
-      boost::beast::http::status::not_found, req.version()};
-  res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
-  res.set(boost::beast::http::field::content_type, "text/html");
-  res.keep_alive(req.keep_alive());
-  res.body() = "No handler implemented.";
-  res.prepare_payload();
-  return res;
-}
-
-//------------------------------------------------------------------------------
 
 // Handles an HTTP server connection.
 // This uses the Curiously Recurring Template Pattern so that
@@ -208,7 +195,8 @@ struct http_session {
           },
           derived().is_ssl());
     } else {
-      queue_entry(not_found(parser_->release()));
+      queue_entry(
+          not_found_response(parser_->release(), "No handler implemented"));
     }
 
     // If we aren't at the queue limit, try to pipeline another request

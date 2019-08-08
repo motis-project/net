@@ -7,6 +7,7 @@
 #include "boost/beast/version.hpp"
 
 #include "net/stop_handler.h"
+#include "net/web_server/responses.h"
 #include "net/web_server/web_server.h"
 
 using namespace net;
@@ -151,20 +152,10 @@ int main() {
   s.on_http_request([](web_server::http_req_t const& req,
                        web_server::http_res_cb_t const& cb, bool ssl) {
     boost::ignore_unused(ssl);
-    auto const server_error = [&req](std::string const& what) {
-      web_server::string_res_t res{
-          boost::beast::http::status::internal_server_error, req.version()};
-      res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
-      res.set(boost::beast::http::field::content_type, "text/html");
-      res.keep_alive(req.keep_alive());
-      res.body() = "An error occurred: '" + what + "'";
-      res.prepare_payload();
-      return res;
-    };
-    return cb(server_error("NOTHING TO SEE HERE - GO AWAY!"));
+    return cb(server_error_response(req, "NOTHING TO SEE HERE - GO AWAY!"));
   });
   boost::system::error_code ec;
-  s.init("0.0.0.0", "9000", ec);
+  s.init("127.0.0.1", "9000", ec);
   if (ec) {
     std::cout << "init error: " << ec.message() << "\n";
     return 1;
@@ -173,7 +164,8 @@ int main() {
     s.stop();
     ioc.stop();
   });
-  std::cout << "web server running\n";
+  std::cout << "web server running on http://127.0.0.1:9000/ and "
+               "https://127.0.0.1:9000/\n";
   s.run();
   ioc.run();
 }
