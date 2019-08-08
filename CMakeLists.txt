@@ -16,6 +16,8 @@ endif()
 find_package(Boost 1.70.0 REQUIRED COMPONENTS system iostreams regex)
 add_definitions(/DBOOST_ALL_NO_LIB=1)
 
+find_package(Threads)
+
 option(NET_LINT "Run clang-tidy with the compiler." OFF)
 if(NET_LINT)
   # clang-tidy will be run on all targets defined hereafter
@@ -25,7 +27,12 @@ endif()
 file(GLOB_RECURSE web-server-src src/web_server/*.cc)
 add_library(web-server ${web-server-src})
 target_compile_features(web-server PUBLIC cxx_std_17)
-target_link_libraries(web-server ${Boost_SYSTEM_LIBRARY} ssl crypto)
+target_link_libraries(web-server
+  ${CMAKE_THREAD_LIBS_INIT}
+  ${Boost_SYSTEM_LIBRARY}
+  ssl
+  crypto
+)
 target_include_directories(web-server SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 if(MSVC)
   set_target_properties(web-server PROPERTIES COMPILE_FLAGS "/bigobj")
@@ -37,7 +44,12 @@ endif()
 file(GLOB_RECURSE wss-client-src src/wss_client.cc)
 add_library(wss-client ${wss-client-src})
 target_compile_features(wss-client PUBLIC cxx_std_17)
-target_link_libraries(wss-client ${Boost_SYSTEM_LIBRARY} ssl crypto)
+target_link_libraries(wss-client
+  ${CMAKE_THREAD_LIBS_INIT}
+  ${Boost_SYSTEM_LIBRARY}
+  ssl
+  crypto
+)
 target_include_directories(wss-client PUBLIC include)
 target_include_directories(wss-client SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 if(WIN32)
@@ -52,6 +64,7 @@ add_library(http-client
 )
 target_compile_features(http-client PUBLIC cxx_std_17)
 target_link_libraries(http-client
+  ${CMAKE_THREAD_LIBS_INIT}
   ${Boost_SYSTEM_LIBRARY}
   ${Boost_IOSTREAMS_LIBRARY}
   ${Boost_REGEX_LIBRARY}

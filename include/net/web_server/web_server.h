@@ -38,7 +38,7 @@ struct web_server {
   using http_res_t =
       std::variant<string_res_t, buffer_res_t, file_res_t, empty_res_t>;
 
-  using http_res_cb_t = std::function<void(http_res_t)>;
+  using http_res_cb_t = std::function<void(http_res_t&&)>;
   using http_req_cb_t = std::function<void(http_req_t, http_res_cb_t, bool)>;
 
   using ws_msg_cb_t =
