@@ -13,19 +13,7 @@
 namespace net {
 
 // Detects SSL handshakes
-class detect_session : public std::enable_shared_from_this<detect_session> {
-  boost::beast::tcp_stream stream_;
-  boost::asio::ssl::context& ctx_;
-  boost::beast::flat_buffer buffer_;
-
-  web_server::http_req_cb_t& http_req_cb_;
-  web_server::ws_msg_cb_t& ws_msg_cb_;
-  web_server::ws_open_cb_t& ws_open_cb_;
-  web_server::ws_close_cb_t& ws_close_cb_;
-
-  std::chrono::nanoseconds const& timeout_;
-
-public:
+struct detect_session : public std::enable_shared_from_this<detect_session> {
   explicit detect_session(boost::asio::ip::tcp::socket&& socket,
                           boost::asio::ssl::context& ctx,
                           web_server::http_req_cb_t& http_req_cb,
@@ -69,6 +57,18 @@ public:
           ->run();
     }
   }
+
+private:
+  boost::beast::tcp_stream stream_;
+  boost::asio::ssl::context& ctx_;
+  boost::beast::flat_buffer buffer_;
+
+  web_server::http_req_cb_t& http_req_cb_;
+  web_server::ws_msg_cb_t& ws_msg_cb_;
+  web_server::ws_open_cb_t& ws_open_cb_;
+  web_server::ws_close_cb_t& ws_close_cb_;
+
+  std::chrono::nanoseconds const& timeout_;
 };
 
 }  // namespace net

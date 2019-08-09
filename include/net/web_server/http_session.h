@@ -110,24 +110,6 @@ struct http_session {
     std::vector<std::unique_ptr<queue_entry>> items_;
   };
 
-  queue queue_;
-  bool write_active_{false};
-
-  boost::beast::flat_buffer buffer_;
-
-  // The parser is stored in an optional container so we can
-  // construct it from scratch it at the beginning of each new message.
-  std::optional<
-      boost::beast::http::request_parser<boost::beast::http::string_body>>
-      parser_;
-
-  web_server::http_req_cb_t& http_req_cb_;
-  web_server::ws_msg_cb_t& ws_msg_cb_;
-  web_server::ws_open_cb_t& ws_open_cb_;
-  web_server::ws_close_cb_t& ws_close_cb_;
-
-  std::chrono::nanoseconds const& timeout_;
-
   // Construct the session
   http_session(boost::beast::flat_buffer buffer,
                web_server::http_req_cb_t& http_req_cb,
@@ -231,6 +213,24 @@ struct http_session {
     }
     queue_.send_next();
   }
+
+  queue queue_;
+  bool write_active_{false};
+
+  boost::beast::flat_buffer buffer_;
+
+  // The parser is stored in an optional container so we can
+  // construct it from scratch it at the beginning of each new message.
+  std::optional<
+      boost::beast::http::request_parser<boost::beast::http::string_body>>
+      parser_;
+
+  web_server::http_req_cb_t& http_req_cb_;
+  web_server::ws_msg_cb_t& ws_msg_cb_;
+  web_server::ws_open_cb_t& ws_open_cb_;
+  web_server::ws_close_cb_t& ws_close_cb_;
+
+  std::chrono::nanoseconds const& timeout_;
 };
 
 //------------------------------------------------------------------------------
@@ -239,8 +239,6 @@ struct http_session {
 struct plain_http_session
     : public http_session<plain_http_session>,
       public std::enable_shared_from_this<plain_http_session> {
-  boost::beast::tcp_stream stream_;
-
   // Create the session
   plain_http_session(boost::beast::tcp_stream&& stream,
                      boost::beast::flat_buffer&& buffer,
@@ -273,6 +271,8 @@ struct plain_http_session
   }
 
   bool is_ssl() const { return false; }
+
+  boost::beast::tcp_stream stream_;
 };
 
 //------------------------------------------------------------------------------
@@ -281,8 +281,6 @@ struct plain_http_session
 struct ssl_http_session
     : public http_session<ssl_http_session>,
       public std::enable_shared_from_this<ssl_http_session> {
-  boost::beast::ssl_stream<boost::beast::tcp_stream> stream_;
-
   // Create the http_session
   ssl_http_session(boost::beast::tcp_stream&& stream,
                    boost::asio::ssl::context& ctx,
@@ -351,6 +349,8 @@ private:
 
     // At this point the connection is closed gracefully
   }
+
+  boost::beast::ssl_stream<boost::beast::tcp_stream> stream_;
 };
 
 }  // namespace net
