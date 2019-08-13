@@ -2,6 +2,8 @@
 
 #include "boost/asio/ip/tcp.hpp"
 #include "boost/asio/strand.hpp"
+#include "boost/beast/core/bind_handler.hpp"
+
 #include "net/web_server/detect_session.h"
 #include "net/web_server/fail.h"
 
@@ -76,10 +78,8 @@ struct web_server::impl {
     if (ec) {
       fail(ec, "main accept");
     } else {
-      std::make_shared<detect_session>(std::move(socket), ctx_, http_req_cb_,
-                                       ws_msg_cb_, ws_open_cb_, ws_close_cb_,
-                                       timeout_)
-          ->run();
+      make_detect_session(std::move(socket), ctx_, http_req_cb_, ws_msg_cb_,
+                          ws_open_cb_, ws_close_cb_, timeout_);
     }
     do_accept();
   }
