@@ -51,7 +51,7 @@ Checks: "*,\
 -cppcoreguidelines-macro-usage,\
 -cert-dcl21-cpp"
 WarningsAsErrors: '*'
-HeaderFilterRegex: '^${RELATIVE_SOURCE_DIR}(base/)|(modules/)|(test/)'
+HeaderFilterRegex: '^${RELATIVE_SOURCE_DIR}(include/)'
 AnalyzeTemporaryDtors: false
 User:            root
 CheckOptions:
