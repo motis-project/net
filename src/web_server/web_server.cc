@@ -6,6 +6,7 @@
 
 #include "net/web_server/detect_session.h"
 #include "net/web_server/fail.h"
+#include "net/web_server/web_server_settings.h"
 
 namespace asio = boost::asio;
 namespace ssl = asio::ssl;
@@ -17,10 +18,12 @@ struct web_server::impl {
   impl(asio::io_context& ioc, asio::ssl::context& ctx)
       : ioc_{ioc}, ctx_{ctx}, acceptor_{ioc} {}
 
-  void on_http_request(http_req_cb_t cb) { http_req_cb_ = std::move(cb); }
-  void on_ws_msg(ws_msg_cb_t cb) { ws_msg_cb_ = std::move(cb); }
-  void on_ws_open(ws_open_cb_t cb) { ws_open_cb_ = std::move(cb); }
-  void on_ws_close(ws_close_cb_t cb) { ws_close_cb_ = std::move(cb); }
+  void on_http_request(http_req_cb_t cb) {
+    settings_.http_req_cb_ = std::move(cb);
+  }
+  void on_ws_msg(ws_msg_cb_t cb) { settings_.ws_msg_cb_ = std::move(cb); }
+  void on_ws_open(ws_open_cb_t cb) { settings_.ws_open_cb_ = std::move(cb); }
+  void on_ws_close(ws_close_cb_t cb) { settings_.ws_close_cb_ = std::move(cb); }
 
   void init(std::string const& host, std::string const& port,
             boost::system::error_code& ec) {
@@ -61,7 +64,11 @@ struct web_server::impl {
   void stop() { acceptor_.close(); }
 
   void set_timeout(std::chrono::nanoseconds const& timeout) {
-    timeout_ = timeout;
+    settings_.timeout_ = timeout;
+  }
+
+  void set_request_body_limit(std::uint64_t limit) {
+    settings_.request_body_limit_ = limit;
   }
 
   void do_accept() {
@@ -78,8 +85,7 @@ struct web_server::impl {
     if (ec) {
       fail(ec, "main accept");
     } else {
-      make_detect_session(std::move(socket), ctx_, http_req_cb_, ws_msg_cb_,
-                          ws_open_cb_, ws_close_cb_, timeout_);
+      make_detect_session(std::move(socket), ctx_, settings_);
     }
     do_accept();
   }
@@ -88,12 +94,7 @@ struct web_server::impl {
   ssl::context& ctx_;
   tcp::acceptor acceptor_;
 
-  std::chrono::nanoseconds timeout_{std::chrono::seconds(60)};
-
-  http_req_cb_t http_req_cb_;
-  ws_msg_cb_t ws_msg_cb_;
-  ws_open_cb_t ws_open_cb_;
-  ws_close_cb_t ws_close_cb_;
+  web_server_settings settings_{};
 };
 
 web_server::web_server(asio::io_context& ioc, asio::ssl::context& ctx)
@@ -112,6 +113,10 @@ void web_server::stop() { impl_->stop(); }
 
 void web_server::set_timeout(std::chrono::nanoseconds const& timeout) {
   impl_->set_timeout(timeout);
+}
+
+void web_server::set_request_body_limit(std::uint64_t limit) {
+  impl_->set_request_body_limit(limit);
 }
 
 void web_server::on_http_request(http_req_cb_t cb) {

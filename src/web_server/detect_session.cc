@@ -16,23 +16,13 @@ namespace net {
 struct detect_session : public std::enable_shared_from_this<detect_session> {
   explicit detect_session(boost::asio::ip::tcp::socket&& socket,
                           boost::asio::ssl::context& ctx,
-                          web_server::http_req_cb_t& http_req_cb,
-                          web_server::ws_msg_cb_t& ws_msg_cb,
-                          web_server::ws_open_cb_t& ws_open_cb,
-                          web_server::ws_close_cb_t& ws_close_cb,
-                          std::chrono::nanoseconds const& timeout)
-      : stream_(std::move(socket)),
-        ctx_(ctx),
-        http_req_cb_(http_req_cb),
-        ws_msg_cb_(ws_msg_cb),
-        ws_open_cb_(ws_open_cb),
-        ws_close_cb_(ws_close_cb),
-        timeout_(timeout) {}
+                          web_server_settings const& settings)
+      : stream_(std::move(socket)), ctx_(ctx), settings_(settings) {}
 
   // Launch the detector
   void run() {
     // Set the timeout.
-    stream_.expires_after(timeout_);
+    stream_.expires_after(settings_.timeout_);
 
     boost::beast::async_detect_ssl(
         stream_, buffer_,
@@ -48,12 +38,10 @@ struct detect_session : public std::enable_shared_from_this<detect_session> {
     if (result) {
       // Launch SSL session
       make_http_session(std::move(stream_), ctx_, std::move(buffer_),
-                        http_req_cb_, ws_msg_cb_, ws_open_cb_, ws_close_cb_,
-                        timeout_);
+                        settings_);
     } else {
       // Launch plain session
-      make_http_session(std::move(stream_), std::move(buffer_), http_req_cb_,
-                        ws_msg_cb_, ws_open_cb_, ws_close_cb_, timeout_);
+      make_http_session(std::move(stream_), std::move(buffer_), settings_);
     }
   }
 
@@ -62,24 +50,13 @@ private:
   boost::asio::ssl::context& ctx_;
   boost::beast::flat_buffer buffer_;
 
-  web_server::http_req_cb_t& http_req_cb_;
-  web_server::ws_msg_cb_t& ws_msg_cb_;
-  web_server::ws_open_cb_t& ws_open_cb_;
-  web_server::ws_close_cb_t& ws_close_cb_;
-
-  std::chrono::nanoseconds const& timeout_;
+  web_server_settings const& settings_;
 };
 
 void make_detect_session(boost::asio::ip::tcp::socket&& socket,
                          boost::asio::ssl::context& ctx,
-                         web_server::http_req_cb_t& http_req_cb,
-                         web_server::ws_msg_cb_t& ws_msg_cb,
-                         web_server::ws_open_cb_t& ws_open_cb,
-                         web_server::ws_close_cb_t& ws_close_cb,
-                         std::chrono::nanoseconds const& timeout) {
-  std::make_shared<detect_session>(std::move(socket), ctx, http_req_cb,
-                                   ws_msg_cb, ws_open_cb, ws_close_cb, timeout)
-      ->run();
+                         web_server_settings const& settings) {
+  std::make_shared<detect_session>(std::move(socket), ctx, settings)->run();
 }
 
 }  // namespace net

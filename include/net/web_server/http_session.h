@@ -7,24 +7,17 @@
 #include "boost/beast/ssl.hpp"
 
 #include "net/web_server/web_server.h"
+#include "net/web_server/web_server_settings.h"
 
 namespace net {
 
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::beast::flat_buffer&& buffer,
-                       web_server::http_req_cb_t& http_req_cb,
-                       web_server::ws_msg_cb_t& ws_msg_cb,
-                       web_server::ws_open_cb_t& ws_open_cb,
-                       web_server::ws_close_cb_t& ws_close_cb,
-                       std::chrono::nanoseconds const& timeout);
+                       web_server_settings const& settings);
 
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::asio::ssl::context& ctx,
                        boost::beast::flat_buffer&& buffer,
-                       web_server::http_req_cb_t& http_req_cb,
-                       web_server::ws_msg_cb_t& ws_msg_cb,
-                       web_server::ws_open_cb_t& ws_open_cb,
-                       web_server::ws_close_cb_t& ws_close_cb,
-                       std::chrono::nanoseconds const& timeout);
+                       web_server_settings const& settings);
 
 }  // namespace net

@@ -121,18 +121,8 @@ struct http_session {
 
   // Construct the session
   http_session(boost::beast::flat_buffer buffer,
-               web_server::http_req_cb_t& http_req_cb,
-               web_server::ws_msg_cb_t& ws_msg_cb,
-               web_server::ws_open_cb_t& ws_open_cb,
-               web_server::ws_close_cb_t& ws_close_cb,
-               std::chrono::nanoseconds const& timeout)
-      : queue_(*this),
-        buffer_(std::move(buffer)),
-        http_req_cb_(http_req_cb),
-        ws_msg_cb_(ws_msg_cb),
-        ws_open_cb_(ws_open_cb),
-        ws_close_cb_(ws_close_cb),
-        timeout_(timeout) {}
+               web_server_settings const& settings)
+      : queue_(*this), buffer_(std::move(buffer)), settings_(settings) {}
 
   void do_read() {
     // Construct a new parser for each message
@@ -140,10 +130,11 @@ struct http_session {
 
     // Apply a reasonable limit to the allowed size
     // of the body in bytes to prevent abuse.
-    parser_->body_limit(10000);
+    parser_->body_limit(settings_.request_body_limit_);
 
     // Set the timeout.
-    boost::beast::get_lowest_layer(derived().stream()).expires_after(timeout_);
+    boost::beast::get_lowest_layer(derived().stream())
+        .expires_after(settings_.timeout_);
 
     // Read a request using the parser-oriented interface
     boost::beast::http::async_read(
@@ -173,13 +164,12 @@ struct http_session {
       // Create a websocket session, transferring ownership
       // of both the socket and the HTTP request.
       return make_websocket_session(derived().release_stream(),
-                                    parser_->release(), ws_msg_cb_, ws_open_cb_,
-                                    ws_close_cb_);
+                                    parser_->release(), settings_);
     }
 
     auto& queue_entry = queue_.add_entry();
-    if (http_req_cb_) {
-      http_req_cb_(
+    if (settings_.http_req_cb_) {
+      settings_.http_req_cb_(
           parser_->release(),
           [self = derived().shared_from_this(),
            &queue_entry](web_server::http_res_t&& res) {
@@ -237,12 +227,7 @@ struct http_session {
       boost::beast::http::request_parser<boost::beast::http::string_body>>
       parser_;
 
-  web_server::http_req_cb_t& http_req_cb_;
-  web_server::ws_msg_cb_t& ws_msg_cb_;
-  web_server::ws_open_cb_t& ws_open_cb_;
-  web_server::ws_close_cb_t& ws_close_cb_;
-
-  std::chrono::nanoseconds const& timeout_;
+  web_server_settings const& settings_;
 };
 
 //------------------------------------------------------------------------------
@@ -254,14 +239,8 @@ struct plain_http_session
   // Create the session
   plain_http_session(boost::beast::tcp_stream&& stream,
                      boost::beast::flat_buffer&& buffer,
-                     web_server::http_req_cb_t& http_req_cb,
-                     web_server::ws_msg_cb_t& ws_msg_cb,
-                     web_server::ws_open_cb_t& ws_open_cb,
-                     web_server::ws_close_cb_t& ws_close_cb,
-                     std::chrono::nanoseconds const& timeout)
-      : http_session<plain_http_session>(std::move(buffer), http_req_cb,
-                                         ws_msg_cb, ws_open_cb, ws_close_cb,
-                                         timeout),
+                     web_server_settings const& settings)
+      : http_session<plain_http_session>(std::move(buffer), settings),
         stream_(std::move(stream)) {}
 
   // Start the session
@@ -291,14 +270,9 @@ struct plain_http_session
 
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::beast::flat_buffer&& buffer,
-                       web_server::http_req_cb_t& http_req_cb,
-                       web_server::ws_msg_cb_t& ws_msg_cb,
-                       web_server::ws_open_cb_t& ws_open_cb,
-                       web_server::ws_close_cb_t& ws_close_cb,
-                       std::chrono::nanoseconds const& timeout) {
+                       web_server_settings const& settings) {
   std::make_shared<plain_http_session>(std::move(stream), std::move(buffer),
-                                       http_req_cb, ws_msg_cb, ws_open_cb,
-                                       ws_close_cb, timeout)
+                                       settings)
       ->run();
 }
 
@@ -312,20 +286,14 @@ struct ssl_http_session
   ssl_http_session(boost::beast::tcp_stream&& stream,
                    boost::asio::ssl::context& ctx,
                    boost::beast::flat_buffer&& buffer,
-                   web_server::http_req_cb_t& http_req_cb,
-                   web_server::ws_msg_cb_t& ws_msg_cb,
-                   web_server::ws_open_cb_t& ws_open_cb,
-                   web_server::ws_close_cb_t& ws_close_cb,
-                   std::chrono::nanoseconds const& timeout)
-      : http_session<ssl_http_session>(std::move(buffer), http_req_cb,
-                                       ws_msg_cb, ws_open_cb, ws_close_cb,
-                                       timeout),
+                   web_server_settings const& settings)
+      : http_session<ssl_http_session>(std::move(buffer), settings),
         stream_(std::move(stream), ctx) {}
 
   // Start the session
   void run() {
     // Set the timeout.
-    boost::beast::get_lowest_layer(stream_).expires_after(timeout_);
+    boost::beast::get_lowest_layer(stream_).expires_after(settings_.timeout_);
 
     // Perform the SSL handshake
     // Note, this is the buffered version of the handshake.
@@ -348,7 +316,7 @@ struct ssl_http_session
   // Called by the base class
   void do_eof() {
     // Set the timeout.
-    boost::beast::get_lowest_layer(stream_).expires_after(timeout_);
+    boost::beast::get_lowest_layer(stream_).expires_after(settings_.timeout_);
 
     // Perform the SSL shutdown
     stream_.async_shutdown(boost::beast::bind_front_handler(
@@ -385,14 +353,9 @@ private:
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::asio::ssl::context& ctx,
                        boost::beast::flat_buffer&& buffer,
-                       web_server::http_req_cb_t& http_req_cb,
-                       web_server::ws_msg_cb_t& ws_msg_cb,
-                       web_server::ws_open_cb_t& ws_open_cb,
-                       web_server::ws_close_cb_t& ws_close_cb,
-                       std::chrono::nanoseconds const& timeout) {
+                       web_server_settings const& settings) {
   std::make_shared<ssl_http_session>(std::move(stream), ctx, std::move(buffer),
-                                     http_req_cb, ws_msg_cb, ws_open_cb,
-                                     ws_close_cb, timeout)
+                                     settings)
       ->run();
 }
 

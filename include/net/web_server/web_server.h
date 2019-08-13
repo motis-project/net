@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -62,6 +63,7 @@ struct web_server {
   void stop();
 
   void set_timeout(std::chrono::nanoseconds const& timeout);
+  void set_request_body_limit(std::uint64_t limit);
 
   void on_http_request(http_req_cb_t);
   void on_ws_msg(ws_msg_cb_t);
