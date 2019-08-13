@@ -18,7 +18,7 @@ template <class Derived>
 struct websocket_session : public ws_session {
   using send_cb_t = std::function<void(boost::system::error_code, size_t)>;
 
-  websocket_session(web_server_settings const& settings)
+  explicit websocket_session(web_server_settings const& settings)
       : settings_(settings) {}
 
   ~websocket_session() {
@@ -33,7 +33,7 @@ struct websocket_session : public ws_session {
   websocket_session& operator=(websocket_session&&) = delete;
 
   // Start the asynchronous operation
-  void run(boost::beast::http::request<boost::beast::http::string_body> req) {
+  void run(boost::beast::http::request<boost::beast::http::string_body>&& req) {
     // Accept the WebSocket upgrade request
     do_accept(std::move(req));
   }
