@@ -41,7 +41,9 @@ struct detect_session : public std::enable_shared_from_this<detect_session> {
   }
 
   void on_detect(boost::beast::error_code ec, bool result) {
-    if (ec) return fail(ec, "detect");
+    if (ec) {
+      return fail(ec, "detect");
+    }
 
     if (result) {
       // Launch SSL session

@@ -31,6 +31,11 @@ struct websocket_session : public ws_session {
     }
   }
 
+  websocket_session(websocket_session const&) = delete;
+  websocket_session& operator=(websocket_session const&) = delete;
+  websocket_session(websocket_session&&) = delete;
+  websocket_session& operator=(websocket_session&&) = delete;
+
   // Start the asynchronous operation
   template <class Body, class Allocator>
   void run(boost::beast::http::request<
@@ -96,7 +101,9 @@ private:
     boost::ignore_unused(bytes_transferred);
 
     // This indicates that the websocket_session was closed
-    if (ec == boost::beast::websocket::error::closed) return;
+    if (ec == boost::beast::websocket::error::closed) {
+      return;
+    }
 
     if (ec) {
       return fail(ec, "read");

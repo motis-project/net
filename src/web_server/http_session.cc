@@ -32,7 +32,13 @@ struct http_session {
 
     // The type-erased, saved work item
     struct work {
+      work() = default;
       virtual ~work() = default;
+      work(work const&) = delete;
+      work& operator=(work const&) = delete;
+      work(work&&) = delete;
+      work& operator=(work&&) = delete;
+
       virtual void send() = 0;
     };
 
@@ -41,7 +47,11 @@ struct http_session {
       items_.reserve(LIMIT);
     }
 
+    ~queue() = default;
     queue(queue const&) = delete;
+    queue& operator=(queue const&) = delete;
+    queue(queue&&) = delete;
+    queue& operator=(queue&&) = delete;
 
     // Returns `true` if we have reached the queue limit
     bool is_full() const { return items_.size() >= LIMIT; }
@@ -65,21 +75,21 @@ struct http_session {
     }
 
     struct queue_entry {
-      queue_entry(http_session& session) : self_(session) {}
+      explicit queue_entry(http_session& session) : self_(session) {}
 
       bool is_finished() const { return static_cast<bool>(work_); }
 
       // Called by the HTTP handler to send a response.
-      template <bool isRequest, class Body, class Fields>
+      template <bool IsRequest, class Body, class Fields>
       void operator()(
-          boost::beast::http::message<isRequest, Body, Fields>&& msg) {
+          boost::beast::http::message<IsRequest, Body, Fields>&& msg) {
         // This holds a work item
         struct work_impl : work {
           http_session& self_;
-          boost::beast::http::message<isRequest, Body, Fields> msg_;
+          boost::beast::http::message<IsRequest, Body, Fields> msg_;
 
           work_impl(http_session& self,
-                    boost::beast::http::message<isRequest, Body, Fields>&& msg)
+                    boost::beast::http::message<IsRequest, Body, Fields>&& msg)
               : self_(self), msg_(std::move(msg)) {}
 
           void send() override {
@@ -144,8 +154,9 @@ struct http_session {
     boost::ignore_unused(bytes_transferred);
 
     // This means they closed the connection
-    if (ec == boost::beast::http::error::end_of_stream)
+    if (ec == boost::beast::http::error::end_of_stream) {
       return derived().do_eof();
+    }
 
     if (ec) {
       return fail(ec, "read");
@@ -179,7 +190,9 @@ struct http_session {
     }
 
     // If we aren't at the queue limit, try to pipeline another request
-    if (!queue_.is_full()) do_read();
+    if (!queue_.is_full()) {
+      do_read();
+    }
   }
 
   void on_write(bool close, boost::beast::error_code ec,
