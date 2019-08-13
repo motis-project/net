@@ -4,7 +4,6 @@
 
 #include "boost/asio/buffer.hpp"
 #include "boost/asio/ssl/context.hpp"
-#include "boost/beast/version.hpp"
 
 #include "net/stop_handler.h"
 #include "net/web_server/responses.h"

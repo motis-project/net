@@ -45,16 +45,14 @@ struct detect_session : public std::enable_shared_from_this<detect_session> {
 
     if (result) {
       // Launch SSL session
-      std::make_shared<ssl_http_session>(
+      make_http_session(
           std::move(stream_), ctx_, std::move(buffer_), http_req_cb_,
-          ws_msg_cb_, ws_open_cb_, ws_close_cb_, timeout_)
-          ->run();
+          ws_msg_cb_, ws_open_cb_, ws_close_cb_, timeout_);
     } else {
       // Launch plain session
-      std::make_shared<plain_http_session>(
+      make_http_session(
           std::move(stream_), std::move(buffer_), http_req_cb_, ws_msg_cb_,
-          ws_open_cb_, ws_close_cb_, timeout_)
-          ->run();
+          ws_open_cb_, ws_close_cb_, timeout_);
     }
   }
 
