@@ -71,6 +71,10 @@ struct web_server::impl {
     settings_.request_body_limit_ = limit;
   }
 
+  void set_request_queue_limit(std::size_t limit) {
+    settings_.request_queue_limit_ = limit;
+  }
+
   void do_accept() {
     acceptor_.async_accept(
         asio::make_strand(ioc_),
@@ -117,6 +121,10 @@ void web_server::set_timeout(std::chrono::nanoseconds const& timeout) {
 
 void web_server::set_request_body_limit(std::uint64_t limit) {
   impl_->set_request_body_limit(limit);
+}
+
+void web_server::set_request_queue_limit(std::size_t limit) {
+  impl_->set_request_queue_limit(limit);
 }
 
 void web_server::on_http_request(http_req_cb_t cb) {

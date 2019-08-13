@@ -64,6 +64,7 @@ struct web_server {
 
   void set_timeout(std::chrono::nanoseconds const& timeout);
   void set_request_body_limit(std::uint64_t limit);
+  void set_request_queue_limit(std::size_t limit);
 
   void on_http_request(http_req_cb_t);
   void on_ws_msg(ws_msg_cb_t);

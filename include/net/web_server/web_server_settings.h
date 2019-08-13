@@ -12,6 +12,7 @@ struct web_server_settings {
 
   std::chrono::nanoseconds timeout_{std::chrono::seconds(60)};
   std::uint64_t request_body_limit_{1024 * 1024};
+  std::size_t request_queue_limit_{8};
 };
 
 }  // namespace net

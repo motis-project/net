@@ -27,9 +27,6 @@ struct http_session {
 
   // This queue is used for HTTP pipelining.
   struct queue {
-    // Maximum number of responses we will queue
-    static constexpr auto const LIMIT = 8;
-
     // The type-erased, saved work item
     struct response {
       response() = default;
@@ -42,9 +39,9 @@ struct http_session {
       virtual void send() = 0;
     };
 
-    explicit queue(http_session& self) : self_(self) {
-      static_assert(LIMIT > 0, "queue limit must be positive");
-      items_.reserve(LIMIT);
+    explicit queue(http_session& self, std::size_t limit)
+        : self_(self), limit_(limit) {
+      items_.reserve(limit);
     }
 
     ~queue() = default;
@@ -54,7 +51,7 @@ struct http_session {
     queue& operator=(queue&&) = delete;
 
     // Returns `true` if we have reached the queue limit
-    bool is_full() const { return items_.size() >= LIMIT; }
+    bool is_full() const { return items_.size() >= limit_; }
 
     // Called when a message finishes sending
     // Returns `true` if the caller should initiate a read
@@ -117,12 +114,16 @@ struct http_session {
 
     http_session& self_;
     std::vector<std::unique_ptr<pending_request>> items_;
+    // Maximum number of responses we will queue
+    std::size_t limit_;
   };
 
   // Construct the session
   http_session(boost::beast::flat_buffer buffer,
                web_server_settings const& settings)
-      : queue_(*this), buffer_(std::move(buffer)), settings_(settings) {}
+      : queue_(*this, settings.request_queue_limit_),
+        buffer_(std::move(buffer)),
+        settings_(settings) {}
 
   void do_read() {
     // Construct a new parser for each message
