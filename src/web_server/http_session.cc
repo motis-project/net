@@ -31,13 +31,13 @@ struct http_session {
     static constexpr auto const LIMIT = 8;
 
     // The type-erased, saved work item
-    struct work {
-      work() = default;
-      virtual ~work() = default;
-      work(work const&) = delete;
-      work& operator=(work const&) = delete;
-      work(work&&) = delete;
-      work& operator=(work&&) = delete;
+    struct response {
+      response() = default;
+      virtual ~response() = default;
+      response(response const&) = delete;
+      response& operator=(response const&) = delete;
+      response(response&&) = delete;
+      response& operator=(response&&) = delete;
 
       virtual void send() = 0;
     };
@@ -70,26 +70,27 @@ struct http_session {
         return false;
       }
       self_.write_active_ = true;
-      items_.front()->work_->send();
+      items_.front()->response_->send();
       return true;
     }
 
-    struct queue_entry {
-      explicit queue_entry(http_session& session) : self_(session) {}
+    struct pending_request {
+      explicit pending_request(http_session& session) : self_(session) {}
 
-      bool is_finished() const { return static_cast<bool>(work_); }
+      bool is_finished() const { return static_cast<bool>(response_); }
 
       // Called by the HTTP handler to send a response.
       template <bool IsRequest, class Body, class Fields>
       void operator()(
           boost::beast::http::message<IsRequest, Body, Fields>&& msg) {
         // This holds a work item
-        struct work_impl : work {
+        struct response_impl : response {
           http_session& self_;
           boost::beast::http::message<IsRequest, Body, Fields> msg_;
 
-          work_impl(http_session& self,
-                    boost::beast::http::message<IsRequest, Body, Fields>&& msg)
+          response_impl(
+              http_session& self,
+              boost::beast::http::message<IsRequest, Body, Fields>&& msg)
               : self_(self), msg_(std::move(msg)) {}
 
           void send() override {
@@ -101,20 +102,21 @@ struct http_session {
           }
         };
 
-        work_ = std::make_unique<work_impl>(self_, std::move(msg));
+        response_ = std::make_unique<response_impl>(self_, std::move(msg));
         self_.send_next_response();
       }
 
       http_session& self_;
-      std::unique_ptr<work> work_;
+      std::unique_ptr<response> response_;
     };
 
-    queue_entry& add_entry() {
-      return *items_.emplace_back(std::make_unique<queue_entry>(self_)).get();
+    pending_request& add_entry() {
+      return *items_.emplace_back(std::make_unique<pending_request>(self_))
+                  .get();
     }
 
     http_session& self_;
-    std::vector<std::unique_ptr<queue_entry>> items_;
+    std::vector<std::unique_ptr<pending_request>> items_;
   };
 
   // Construct the session
