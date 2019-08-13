@@ -37,10 +37,7 @@ struct websocket_session : public ws_session {
   websocket_session& operator=(websocket_session&&) = delete;
 
   // Start the asynchronous operation
-  template <class Body, class Allocator>
-  void run(boost::beast::http::request<
-           Body, boost::beast::http::basic_fields<Allocator>>
-               req) {
+  void run(boost::beast::http::request<boost::beast::http::string_body> req) {
     // Accept the WebSocket upgrade request
     do_accept(std::move(req));
   }
@@ -52,10 +49,8 @@ struct websocket_session : public ws_session {
 
 private:
   // Start the asynchronous operation
-  template <class Body, class Allocator>
-  void do_accept(boost::beast::http::request<
-                 Body, boost::beast::http::basic_fields<Allocator>>
-                     req) {
+  void do_accept(
+      boost::beast::http::request<boost::beast::http::string_body> req) {
     // Set suggested timeout settings for the websocket
     derived().ws().set_option(
         boost::beast::websocket::stream_base::timeout::suggested(
@@ -251,7 +246,5 @@ void make_websocket_session(
                                           ws_open_cb, ws_close_cb)
       ->run(std::move(req));
 }
-
-// template make_websocket_session
 
 }  // namespace net
