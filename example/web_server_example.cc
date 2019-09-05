@@ -138,14 +138,18 @@ int main() {
   s.on_ws_msg([](ws_session_ptr const& s, std::string const& msg,
                  ws_msg_type type) {
     std::cout << "received: \"" << msg << "\"" << std::endl;
-    s.lock()->send(msg, type, [](boost::system::error_code ec, std::size_t) {
-      if (ec) {
-        std::cout << "send ec: " << ec.message() << "\n";
-      }
-    });
+    if (auto session = s.lock()) {
+      session->send(msg, type, [](boost::system::error_code ec, std::size_t) {
+        if (ec) {
+          std::cout << "send ec: " << ec.message() << "\n";
+        }
+      });
+    }
   });
   s.on_ws_open([](ws_session_ptr const& s, bool ssl) {
-    std::cout << "session open: " << s.lock().get() << " ssl=" << ssl << "\n";
+    if (auto session = s.lock()) {
+      std::cout << "session open: " << session.get() << " ssl=" << ssl << "\n";
+    }
   });
   s.on_ws_close([](void* s) { std::cout << "session close: " << s << "\n"; });
   s.on_http_request([](web_server::http_req_t const& req,
