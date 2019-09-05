@@ -76,8 +76,8 @@ struct wss_client::impl : public boost::asio::coroutine,
 
       // Read incoming messages.
       while (true) {
-        yield ws_.async_read(buffer_,
-                             [me](error_code ec, size_t) { me->loop(me, ec); });
+        yield ws_.async_read(
+            buffer_, [me](error_code ec, std::size_t) { me->loop(me, ec); });
         if (ec) {
           if (on_fail_fn_) {
             on_fail_fn_(ec);
@@ -119,8 +119,9 @@ struct wss_client::impl : public boost::asio::coroutine,
 
     auto copy = std::make_shared<std::string>(msg);
     ws_.binary(binary);
-    ws_.async_write(boost::asio::buffer(*copy),
-                    [me, copy](error_code ec, size_t s) { me->send_next(me); });
+    ws_.async_write(
+        boost::asio::buffer(*copy),
+        [me, copy](error_code ec, std::size_t s) { me->send_next(me); });
     send_active_ = true;
   }
 

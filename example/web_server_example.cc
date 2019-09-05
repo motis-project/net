@@ -135,15 +135,15 @@ int main() {
   boost::asio::io_context ioc;
   web_server s{ioc, ctx};
 
-  s.on_ws_msg(
-      [](ws_session_ptr const& s, std::string const& msg, ws_msg_type type) {
-        std::cout << "received: \"" << msg << "\"" << std::endl;
-        s.lock()->send(msg, type, [](boost::system::error_code ec, size_t) {
-          if (ec) {
-            std::cout << "send ec: " << ec.message() << "\n";
-          }
-        });
-      });
+  s.on_ws_msg([](ws_session_ptr const& s, std::string const& msg,
+                 ws_msg_type type) {
+    std::cout << "received: \"" << msg << "\"" << std::endl;
+    s.lock()->send(msg, type, [](boost::system::error_code ec, std::size_t) {
+      if (ec) {
+        std::cout << "send ec: " << ec.message() << "\n";
+      }
+    });
+  });
   s.on_ws_open([](ws_session_ptr const& s, bool ssl) {
     std::cout << "session open: " << s.lock().get() << " ssl=" << ssl << "\n";
   });

@@ -20,7 +20,7 @@ namespace net {
 enum class ws_msg_type { TEXT, BINARY };
 
 struct ws_session {
-  using send_cb_t = std::function<void(boost::system::error_code, size_t)>;
+  using send_cb_t = std::function<void(boost::system::error_code, std::size_t)>;
   virtual void send(std::string msg, ws_msg_type type, send_cb_t cb) = 0;
 };
 

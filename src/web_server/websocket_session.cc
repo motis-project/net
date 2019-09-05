@@ -16,7 +16,7 @@ namespace net {
 
 template <class Derived>
 struct websocket_session : public ws_session {
-  using send_cb_t = std::function<void(boost::system::error_code, size_t)>;
+  using send_cb_t = std::function<void(boost::system::error_code, std::size_t)>;
 
   explicit websocket_session(web_server_settings const& settings)
       : settings_(settings) {}
@@ -142,7 +142,8 @@ private:
     derived().ws().async_write(
         boost::asio::buffer(m->data(), m->size()),
         [m, cb, self = derived().shared_from_this()](
-            boost::system::error_code const& ec, size_t bytes_transferred) {
+            boost::system::error_code const& ec,
+            std::size_t bytes_transferred) {
           self->send_active_ = false;
           self->send_next();
           boost::asio::post(
