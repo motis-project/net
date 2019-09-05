@@ -6,7 +6,7 @@
 
 namespace net {
 
-void serve_static_file(boost::beast::string_view const& doc_root,
+void serve_static_file(boost::beast::string_view doc_root,
                        web_server::http_req_t const& req,
                        web_server::http_res_cb_t const& cb);
 

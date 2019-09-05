@@ -72,7 +72,7 @@ inline std::string_view mime_type(beast::string_view path) {
   return " application/octet-stream";
 }
 
-std::string path_cat(beast::string_view const& base, beast::string_view path) {
+std::string path_cat(beast::string_view base, beast::string_view path) {
   if (base.empty()) {
     return std::string(path);
   }
@@ -96,7 +96,7 @@ std::string path_cat(beast::string_view const& base, beast::string_view path) {
   return result;
 }
 
-void serve_static_file(beast::string_view const& doc_root,
+void serve_static_file(beast::string_view doc_root,
                        web_server::http_req_t const& req,
                        web_server::http_res_cb_t const& cb) {
   if (req.method() != http::verb::get && req.method() != http::verb::head) {
