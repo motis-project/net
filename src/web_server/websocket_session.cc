@@ -120,9 +120,6 @@ private:
 
     // Clear the buffer
     buffer_.consume(buffer_.size());
-
-    // Do another read
-    do_read();
   }
 
   void send_next() {
