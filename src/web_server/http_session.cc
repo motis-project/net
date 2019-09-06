@@ -100,7 +100,8 @@ struct http_session {
         };
 
         response_ = std::make_unique<response_impl>(self_, std::move(msg));
-        self_.send_next_response();
+        boost::asio::post(self_.derived().stream().get_executor(),
+                          [&]() { self_.send_next_response(); });
       }
 
       http_session& self_;
