@@ -84,7 +84,9 @@ std::string path_cat(beast::string_view base, beast::string_view path) {
   }
   result.append(path.data(), path.size());
   for (auto& c : result) {
-    if (c == '/') c = path_separator;
+    if (c == '/') {
+      c = path_separator;
+    }
   }
 #else
   char constexpr path_separator = '/';
