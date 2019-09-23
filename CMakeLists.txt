@@ -93,7 +93,7 @@ target_link_libraries(net-http_client-sample http-client)
 target_compile_features(net-http_client-sample PUBLIC cxx_std_17)
 target_include_directories(net-http_client-sample SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 
-find_program(CLANG_FORMAT_COMMAND NAMES clang-format clang-format-8)
+find_program(CLANG_FORMAT_COMMAND NAMES clang-format-9 clang-format)
 add_custom_target(net-format-check
   COMMAND find
     ${CMAKE_CURRENT_SOURCE_DIR}/src

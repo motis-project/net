@@ -1,13 +1,12 @@
-variables:
-  ASAN_SYMBOLIZER_PATH: "/opt/clang+llvm-5.0.0-linux-x86_64-ubuntu16.04/bin/llvm-symbolizer"
-
 # GCC production
 gcc-release:
   tags:
-    - bionic
+    - disco
   script:
-    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
-    - git submodule update --init --recursive
+    - export PATH=/usr/lib/ccache:$PATH
+    - export CXX=g++-9
+    - export CC=gcc-9
+    - export BOOST_ROOT=~/boost_1_71_0
     - mkdir -p build-release
     - cd build-release
     - cmake -GNinja -DCMAKE_BUILD_TYPE=Release ..
@@ -16,14 +15,15 @@ gcc-release:
 # Clang debug with address sanitizer
 clang-debug-asan:
   tags:
-    - bionic
+    - disco
   script:
     - export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
-    - export CXXFLAGS="-fsanitize=address -fno-omit-frame-pointer"
-    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
-    - export CXX=clang++
-    - export CC=clang
-    - git submodule update --init --recursive
+    - export PATH=/usr/lib/ccache:$PATH
+    - export UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1
+    - export CXXFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -stdlib=libc++"
+    - export BOOST_ROOT=~/boost_1_71_0-libc++
+    - export CXX=clang++-9
+    - export CC=clang-9
     - mkdir -p build-clang-debug-asan
     - cd build-clang-debug-asan
     - cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCTX_ASAN=true ..
@@ -32,9 +32,12 @@ clang-debug-asan:
 # GCC debug valgrind
 gcc-debug-valgrind:
   tags:
-    - bionic
+    - disco
   script:
-    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
+    - export PATH=/usr/lib/ccache:$PATH
+    - export CXX=g++-9
+    - export CC=gcc-9
+    - export BOOST_ROOT=~/boost_1_71_0
     #- export CXXFLAGS="-D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" TODO(felix) currently not working with OSRM
     - git submodule update --init --recursive
     - mkdir -p build-gcc-debug-valgrind
@@ -75,27 +78,24 @@ msvc-debug:
 # Clang-Tidy
 clang-tidy:
   tags:
-    - bionic
-    - clang-8
+    - disco
   script:
-    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8-libc++
+    - export PATH=/usr/lib/ccache:$PATH
     - export CXXFLAGS=-stdlib=libc++
-    - export CXX=clang++
-    - export CC=clang
+    - export BOOST_ROOT=~/boost_1_71_0-libc++
+    - export CXX=clang++-9
+    - export CC=clang-9
     - mkdir build-clang-tidy
     - cd build-clang-tidy
     - cmake -GNinja -DNET_LINT=ON ..
     - ninja
 
-
 # Clang-Format
 clang-format:
   tags:
-    - bionic
-    - clang-8
+    - disco
   script:
-    - export BOOST_ROOT=/opt/boost_1_70_0-clang-8
-    - export PATH=/opt/clang-8.0/bin:$PATH
+    - export BOOST_ROOT=~/boost_1_71_0-libc++
     - mkdir build-clang-format
     - cd build-clang-format
     - cmake -GNinja ..
