@@ -265,7 +265,7 @@ struct plain_http_session
     // At this point the connection is closed gracefully
   }
 
-  bool is_ssl() const { return false; }
+  static bool is_ssl() { return false; }
 
   boost::beast::tcp_stream stream_;
 };
@@ -323,11 +323,10 @@ struct ssl_http_session
     boost::beast::get_lowest_layer(stream_).expires_after(settings_.timeout_);
 
     // Perform the SSL shutdown
-    stream_.async_shutdown(boost::beast::bind_front_handler(
-        &ssl_http_session::on_shutdown, shared_from_this()));
+    stream_.async_shutdown(ssl_http_session::on_shutdown);
   }
 
-  bool is_ssl() const { return true; }
+  static bool is_ssl() { return true; }
 
 private:
   void on_handshake(boost::beast::error_code ec, std::size_t bytes_used) {
@@ -341,7 +340,7 @@ private:
     do_read();
   }
 
-  void on_shutdown(boost::beast::error_code ec) {
+  static void on_shutdown(boost::beast::error_code ec) {
     if (ec) {
       return fail(ec, "shutdown");
     }

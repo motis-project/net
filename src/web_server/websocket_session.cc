@@ -178,7 +178,7 @@ struct plain_websocket_session
     return ws_;
   }
 
-  bool is_ssl() const { return false; }
+  static bool is_ssl() { return false; }
 
 private:
   boost::beast::websocket::stream<boost::beast::tcp_stream> ws_;
@@ -204,7 +204,7 @@ struct ssl_websocket_session
     return ws_;
   }
 
-  bool is_ssl() const { return true; }
+  static bool is_ssl() { return true; }
 
 private:
   boost::beast::websocket::stream<
