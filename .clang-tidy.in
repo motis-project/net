@@ -49,7 +49,10 @@ Checks: "*,\
 -cert-msc51-cpp,\
 -bugprone-exception-escape,\
 -cppcoreguidelines-macro-usage,\
--cert-dcl21-cpp"
+-cert-dcl21-cpp,\
+-modernize-use-trailing-return-type,\
+-fuchsia-default-arguments-calls,\
+-fuchsia-default-arguments-declarations"
 WarningsAsErrors: '*'
 HeaderFilterRegex: '^${RELATIVE_SOURCE_DIR}(include/)'
 AnalyzeTemporaryDtors: false
