@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(net)
 
+option(NET_LINT "Run clang-tidy with the compiler." OFF)
+if(NET_LINT)
+  include(cmake/clang-tidy.cmake)
+endif()
+
 include(cmake/pkg.cmake)
 
 if(WIN32)
@@ -87,24 +92,3 @@ add_executable(net-http_client-sample example/https_example.cc)
 target_link_libraries(net-http_client-sample http-client)
 target_compile_features(net-http_client-sample PUBLIC cxx_std_17)
 target_include_directories(net-http_client-sample SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
-
-find_program(CLANG_FORMAT_COMMAND NAMES clang-format-9 clang-format)
-add_custom_target(net-format-check
-  COMMAND find
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/example
-    -type f
-    (
-      -name "*.cc"
-      -o
-      -name "*.h"
-    )
-    -print0
-    | xargs -0 ${CLANG_FORMAT_COMMAND} -i
-  COMMAND git status --porcelain
-  COMMAND git status --porcelain | xargs -I {} -0 test -z \"{}\"
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "Checking source code formatting"
-  VERBATIM
-)
