@@ -3,7 +3,10 @@
 #include <chrono>
 
 #include "boost/asio/ip/tcp.hpp"
+
+#if defined(NET_TLS)
 #include "boost/asio/ssl/context.hpp"
+#endif
 
 #include "net/web_server/web_server.h"
 #include "net/web_server/web_server_settings.h"

@@ -4,7 +4,10 @@
 
 #include "boost/beast/core.hpp"
 #include "boost/beast/http.hpp"
+
+#if defined(NET_TLS)
 #include "boost/beast/ssl.hpp"
+#endif
 
 #include "net/web_server/fail.h"
 #include "net/web_server/http_session.h"
@@ -12,6 +15,7 @@
 
 namespace net {
 
+#if defined(NET_TLS)
 // Detects SSL handshakes
 struct detect_session : public std::enable_shared_from_this<detect_session> {
   explicit detect_session(boost::asio::ip::tcp::socket&& socket,
