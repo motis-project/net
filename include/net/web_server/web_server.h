@@ -8,7 +8,11 @@
 #include <variant>
 
 #include "boost/asio/io_context.hpp"
+
+#if defined(NET_TLS)
 #include "boost/asio/ssl/context.hpp"
+#endif()
+
 #include "boost/beast/http/buffer_body.hpp"
 #include "boost/beast/http/empty_body.hpp"
 #include "boost/beast/http/file_body.hpp"
