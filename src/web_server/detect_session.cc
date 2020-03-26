@@ -53,10 +53,18 @@ private:
   web_server_settings const& settings_;
 };
 
+#if defined(NET_TLS)
 void make_detect_session(boost::asio::ip::tcp::socket&& socket,
                          boost::asio::ssl::context& ctx,
                          web_server_settings const& settings) {
   std::make_shared<detect_session>(std::move(socket), ctx, settings)->run();
 }
+#else
+void make_detect_session(boost::asio::ip::tcp::socket&& socket,
+                         web_server_settings const& settings) {
+  make_http_session(boost::beast::tcp_stream{std::move(socket)},
+                    boost::beast::flat_buffer{}, settings);
+}
+#endif
 
 }  // namespace net

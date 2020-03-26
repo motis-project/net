@@ -48,7 +48,11 @@ struct web_server {
   using ws_open_cb_t = std::function<void(ws_session_ptr, bool)>;
   using ws_close_cb_t = std::function<void(void*)>;
 
+#if defined(NET_TLS)
   explicit web_server(boost::asio::io_context&, boost::asio::ssl::context&);
+#else
+  explicit web_server(boost::asio::io_context&);
+#endif
   ~web_server();
 
   web_server(web_server&&) = default;
