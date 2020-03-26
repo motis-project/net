@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(net)
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 option(NET_LINT "Run clang-tidy with the compiler." OFF)
 if(NET_LINT)
   include(cmake/clang-tidy.cmake)
