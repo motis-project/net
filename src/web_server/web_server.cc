@@ -9,14 +9,21 @@
 #include "net/web_server/web_server_settings.h"
 
 namespace asio = boost::asio;
-namespace ssl = asio::ssl;
 using tcp = asio::ip::tcp;
+
+#if defined(NET_TLS)
+namespace ssl = asio::ssl;
+#endif
 
 namespace net {
 
 struct web_server::impl {
+#if defined(NET_TLS)
   impl(asio::io_context& ioc, asio::ssl::context& ctx)
-      : ioc_{ioc}, ctx_{ctx}, acceptor_{ioc} {}
+      : ioc_{ioc}, acceptor_{ioc}, ctx_{ctx} {}
+#else
+  impl(asio::io_context& ioc) : ioc_{ioc}, acceptor_{ioc} {}
+#endif
 
   void on_http_request(http_req_cb_t cb) {
     settings_.http_req_cb_ = std::move(cb);
@@ -89,20 +96,31 @@ struct web_server::impl {
     if (ec) {
       fail(ec, "main accept");
     } else {
+#if defined(NET_TLS)
       make_detect_session(std::move(socket), ctx_, settings_);
+#else
+      make_detect_session(std::move(socket), settings_);
+#endif
     }
     do_accept();
   }
 
   asio::io_context& ioc_;
-  ssl::context& ctx_;
   tcp::acceptor acceptor_;
+  web_server_settings settings_;
 
-  web_server_settings settings_{};
+#if defined(NET_TLS)
+  ssl::context& ctx_;
+#endif
 };
 
+#if defined(NET_TLS)
 web_server::web_server(asio::io_context& ioc, asio::ssl::context& ctx)
     : impl_{std::make_unique<impl>(ioc, ctx)} {}
+#else
+web_server::web_server(asio::io_context& ioc)
+    : impl_{std::make_unique<impl>(ioc)} {}
+#endif
 
 web_server::~web_server() = default;
 
