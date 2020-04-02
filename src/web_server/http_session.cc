@@ -6,8 +6,10 @@
 #include <vector>
 
 #include "boost/beast/http.hpp"
-#include "boost/beast/ssl.hpp"
 #include "boost/beast/websocket/rfc6455.hpp"
+#if defined(NET_TLS)
+#include "boost/beast/ssl.hpp"
+#endif
 
 #include "net/web_server/fail.h"
 #include "net/web_server/responses.h"
@@ -283,6 +285,7 @@ void make_http_session(boost::beast::tcp_stream&& stream,
 //------------------------------------------------------------------------------
 
 // Handles an SSL HTTP connection
+#if defined(NET_TLS)
 struct ssl_http_session
     : public http_session<ssl_http_session>,
       public std::enable_shared_from_this<ssl_http_session> {
@@ -361,5 +364,6 @@ void make_http_session(boost::beast::tcp_stream&& stream,
                                      settings)
       ->run();
 }
+#endif
 
 }  // namespace net

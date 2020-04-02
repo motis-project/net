@@ -8,7 +8,11 @@
 #include <variant>
 
 #include "boost/asio/io_context.hpp"
+
+#if defined(NET_TLS)
 #include "boost/asio/ssl/context.hpp"
+#endif()
+
 #include "boost/beast/http/buffer_body.hpp"
 #include "boost/beast/http/empty_body.hpp"
 #include "boost/beast/http/file_body.hpp"
@@ -48,7 +52,11 @@ struct web_server {
   using ws_open_cb_t = std::function<void(ws_session_ptr, bool)>;
   using ws_close_cb_t = std::function<void(void*)>;
 
+#if defined(NET_TLS)
   explicit web_server(boost::asio::io_context&, boost::asio::ssl::context&);
+#else
+  explicit web_server(boost::asio::io_context&);
+#endif
   ~web_server();
 
   web_server(web_server&&) = default;

@@ -2,7 +2,9 @@
 
 #include <iostream>
 
+#if defined(NET_TLS)
 #include "boost/asio/ssl/error.hpp"
+#endif
 #include "boost/beast/core/error.hpp"
 
 namespace net {
@@ -26,7 +28,10 @@ inline void fail(boost::beast::error_code ec, char const* what) {
   // Therefore, if we see a short read here, it has occurred
   // after the message has been completed, so it is safe to ignore it.
 
-  if (ec == boost::asio::ssl::error::stream_truncated ||
+  if (
+#if defined(NET_TLS)
+      ec == boost::asio::ssl::error::stream_truncated ||
+#endif
       ec == boost::beast::error::timeout) {
     return;
   }

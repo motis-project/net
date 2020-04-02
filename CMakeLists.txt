@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(net)
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 option(NET_LINT "Run clang-tidy with the compiler." OFF)
 if(NET_LINT)
   include(cmake/clang-tidy.cmake)
@@ -25,20 +27,31 @@ if(NET_LINT)
 endif()
 
 file(GLOB_RECURSE web-server-src src/web_server/*.cc)
-add_library(web-server ${web-server-src})
+add_library(web-server ${web-server-src} src/base64.cc)
 target_compile_features(web-server PUBLIC cxx_std_17)
 target_link_libraries(web-server
+  ${CMAKE_THREAD_LIBS_INIT}
+  ${Boost_SYSTEM_LIBRARY}
+)
+target_include_directories(web-server SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
+if(MSVC)
+  set_target_properties(web-server PROPERTIES COMPILE_FLAGS "/bigobj")
+  target_compile_definitions(web-server PUBLIC _WIN32_WINNT=0x0601)
+endif()
+
+add_library(web-server-tls ${web-server-src} src/base64.cc)
+target_compile_features(web-server-tls PUBLIC cxx_std_17)
+target_link_libraries(web-server-tls
   ${CMAKE_THREAD_LIBS_INIT}
   ${Boost_SYSTEM_LIBRARY}
   ssl
   crypto
 )
-target_include_directories(web-server SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
+target_compile_definitions(web-server-tls PUBLIC NET_TLS=1)
+target_include_directories(web-server-tls SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 if(MSVC)
-  set_target_properties(web-server PROPERTIES COMPILE_FLAGS "/bigobj")
-endif()
-if(WIN32)
-  target_compile_definitions(web-server PUBLIC _WIN32_WINNT=0x0601)
+  set_target_properties(web-server-tls PROPERTIES COMPILE_FLAGS "/bigobj")
+  target_compile_definitions(web-server-tls PUBLIC _WIN32_WINNT=0x0601)
 endif()
 
 file(GLOB_RECURSE wss-client-src src/wss_client.cc)
@@ -79,7 +92,7 @@ if(WIN32)
 endif()
 
 add_executable(net-web_server-sample example/web_server_example.cc)
-target_link_libraries(net-web_server-sample web-server)
+target_link_libraries(net-web_server-sample web-server-tls)
 target_compile_features(net-web_server-sample PUBLIC cxx_std_17)
 target_include_directories(net-web_server-sample SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
 

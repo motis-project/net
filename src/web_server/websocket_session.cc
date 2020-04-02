@@ -184,9 +184,18 @@ private:
   boost::beast::websocket::stream<boost::beast::tcp_stream> ws_;
 };
 
+void make_websocket_session(
+    boost::beast::tcp_stream stream,
+    boost::beast::http::request<boost::beast::http::string_body> req,
+    web_server_settings const& settings) {
+  std::make_shared<plain_websocket_session>(std::move(stream), settings)
+      ->run(std::move(req));
+}
+
 //------------------------------------------------------------------------------
 
 // Handles an SSL WebSocket connection
+#if defined(NET_TLS)
 struct ssl_websocket_session
     : public websocket_session<ssl_websocket_session>,
       public std::enable_shared_from_this<ssl_websocket_session> {
@@ -212,16 +221,6 @@ private:
       ws_;
 };
 
-//------------------------------------------------------------------------------
-
-void make_websocket_session(
-    boost::beast::tcp_stream stream,
-    boost::beast::http::request<boost::beast::http::string_body> req,
-    web_server_settings const& settings) {
-  std::make_shared<plain_websocket_session>(std::move(stream), settings)
-      ->run(std::move(req));
-}
-
 void make_websocket_session(
     boost::beast::ssl_stream<boost::beast::tcp_stream> stream,
     boost::beast::http::request<boost::beast::http::string_body> req,
@@ -229,5 +228,6 @@ void make_websocket_session(
   std::make_shared<ssl_websocket_session>(std::move(stream), settings)
       ->run(std::move(req));
 }
+#endif
 
 }  // namespace net
