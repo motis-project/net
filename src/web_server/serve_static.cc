@@ -98,17 +98,19 @@ std::string path_cat(beast::string_view base, beast::string_view path) {
   return result;
 }
 
-void serve_static_file(beast::string_view doc_root,
+bool serve_static_file(beast::string_view doc_root,
                        web_server::http_req_t const& req,
                        web_server::http_res_cb_t const& cb) {
   if (req.method() != http::verb::get && req.method() != http::verb::head) {
-    return cb(bad_request_response(req, "Invalid method"));
+    cb(bad_request_response(req, "Invalid method"));
+    return true;
   }
 
   auto const& target = req.target();
   if (target.empty() || target[0] != '/' ||
       target.find("..") != beast::string_view::npos) {
-    return cb(bad_request_response(req, "Invalid target"));
+    cb(bad_request_response(req, "Invalid target"));
+    return true;
   }
 
   auto path = path_cat(doc_root, req.target());
@@ -121,9 +123,10 @@ void serve_static_file(beast::string_view doc_root,
   body.open(path.c_str(), beast::file_mode::scan, ec);
 
   if (ec == beast::errc::no_such_file_or_directory) {
-    return cb(not_found_response(req));
+    return false;
   } else if (ec) {
-    return cb(server_error_response(req, ec.message()));
+    cb(server_error_response(req, ec.message()));
+    return true;
   }
 
   auto const size = body.size();
@@ -132,14 +135,16 @@ void serve_static_file(beast::string_view doc_root,
   if (req.method() == http::verb::head) {
     auto res = empty_response(req, http::status::ok, content_type);
     res.content_length(size);
-    return cb(res);
+    cb(res);
+    return true;
   } else {
     auto res = web_server::file_res_t{
         std::piecewise_construct, std::make_tuple(std::move(body)),
         std::make_tuple(http::status::ok, req.version())};
     res.set(http::field::content_type, content_type);
     res.content_length(size);
-    return cb(std::move(res));
+    cb(std::move(res));
+    return true;
   }
 }
 
