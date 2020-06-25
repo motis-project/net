@@ -16,10 +16,10 @@ namespace net {
 #if defined(NET_TLS)
 void make_detect_session(boost::asio::ip::tcp::socket&& socket,
                          boost::asio::ssl::context& ctx,
-                         web_server_settings const& settings);
+                         web_server_settings_ptr settings);
 #else
 void make_detect_session(boost::asio::ip::tcp::socket&& socket,
-                         web_server_settings const& settings);
+                         web_server_settings_ptr settings);
 #endif
 
 }  // namespace net

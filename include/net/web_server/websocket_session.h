@@ -16,13 +16,13 @@ namespace net {
 void make_websocket_session(
     boost::beast::tcp_stream stream,
     boost::beast::http::request<boost::beast::http::string_body> req,
-    web_server_settings const& settings);
+    web_server_settings_ptr settings);
 
 #if defined(NET_TLS)
 void make_websocket_session(
     boost::beast::ssl_stream<boost::beast::tcp_stream> stream,
     boost::beast::http::request<boost::beast::http::string_body> req,
-    web_server_settings const& settings);
+    web_server_settings_ptr settings);
 #endif
 
 }  // namespace net
