@@ -18,12 +18,12 @@ template <class Derived>
 struct websocket_session : public ws_session {
   using send_cb_t = std::function<void(boost::system::error_code, std::size_t)>;
 
-  explicit websocket_session(web_server_settings const& settings)
-      : settings_(settings) {}
+  explicit websocket_session(web_server_settings_ptr settings)
+      : settings_(std::move(settings)) {}
 
   ~websocket_session() {
-    if (settings_.ws_close_cb_) {
-      settings_.ws_close_cb_(this);
+    if (settings_->ws_close_cb_) {
+      settings_->ws_close_cb_(this);
     }
   }
 
@@ -70,10 +70,10 @@ private:
       return fail(ec, "accept");
     }
 
-    if (settings_.ws_open_cb_) {
+    if (settings_->ws_open_cb_) {
       boost::asio::post(derived().ws().get_executor(),
                         [&, self = derived().shared_from_this()] {
-                          settings_.ws_open_cb_(self, derived().is_ssl());
+                          settings_->ws_open_cb_(self, derived().is_ssl());
                         });
     }
 
@@ -100,8 +100,8 @@ private:
       return fail(ec, "read");
     }
 
-    if (settings_.ws_msg_cb_) {
-      settings_.ws_msg_cb_(
+    if (settings_->ws_msg_cb_) {
+      settings_->ws_msg_cb_(
           derived().shared_from_this(),
           boost::beast::buffers_to_string(buffer_.data()),
           derived().ws().got_text() ? ws_msg_type::TEXT : ws_msg_type::BINARY);
@@ -155,7 +155,7 @@ private:
 
   boost::beast::flat_buffer buffer_;
 
-  web_server_settings const& settings_;
+  web_server_settings_ptr settings_;
 
   std::queue<std::tuple<std::string, ws_msg_type, send_cb_t>> send_queue_;
   bool send_active_{false};
@@ -169,7 +169,7 @@ struct plain_websocket_session
       public std::enable_shared_from_this<plain_websocket_session> {
   // Create the session
   explicit plain_websocket_session(boost::beast::tcp_stream&& stream,
-                                   web_server_settings const& settings)
+                                   web_server_settings_ptr settings)
       : websocket_session<plain_websocket_session>(settings),
         ws_(std::move(stream)) {}
 
@@ -187,8 +187,9 @@ private:
 void make_websocket_session(
     boost::beast::tcp_stream stream,
     boost::beast::http::request<boost::beast::http::string_body> req,
-    web_server_settings const& settings) {
-  std::make_shared<plain_websocket_session>(std::move(stream), settings)
+    web_server_settings_ptr settings) {
+  std::make_shared<plain_websocket_session>(std::move(stream),
+                                            std::move(settings))
       ->run(std::move(req));
 }
 
@@ -202,8 +203,8 @@ struct ssl_websocket_session
   // Create the ssl_websocket_session
   explicit ssl_websocket_session(
       boost::beast::ssl_stream<boost::beast::tcp_stream>&& stream,
-      web_server_settings const& settings)
-      : websocket_session<ssl_websocket_session>(settings),
+      web_server_settings_ptr settings)
+      : websocket_session<ssl_websocket_session>(std::move(settings)),
         ws_(std::move(stream)) {}
 
   // Called by the base class
@@ -224,8 +225,9 @@ private:
 void make_websocket_session(
     boost::beast::ssl_stream<boost::beast::tcp_stream> stream,
     boost::beast::http::request<boost::beast::http::string_body> req,
-    web_server_settings const& settings) {
-  std::make_shared<ssl_websocket_session>(std::move(stream), settings)
+    web_server_settings_ptr settings) {
+  std::make_shared<ssl_websocket_session>(std::move(stream),
+                                          std::move(settings))
       ->run(std::move(req));
 }
 #endif

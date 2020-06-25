@@ -16,13 +16,13 @@ namespace net {
 
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::beast::flat_buffer&& buffer,
-                       web_server_settings const& settings);
+                       web_server_settings_ptr settings);
 
 #if defined(NET_TLS)
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::asio::ssl::context& ctx,
                        boost::beast::flat_buffer&& buffer,
-                       web_server_settings const& settings);
+                       web_server_settings_ptr settings);
 #endif
 
 }  // namespace net
