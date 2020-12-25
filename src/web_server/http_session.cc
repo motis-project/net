@@ -125,10 +125,10 @@ struct http_session {
 
   // Construct the session
   http_session(boost::beast::flat_buffer buffer,
-               web_server_settings const& settings)
-      : queue_(*this, settings.request_queue_limit_),
+               web_server_settings_ptr settings)
+      : queue_(*this, settings->request_queue_limit_),
         buffer_(std::move(buffer)),
-        settings_(settings) {}
+        settings_(std::move(settings)) {}
 
   void do_read() {
     // Construct a new parser for each message
@@ -136,11 +136,11 @@ struct http_session {
 
     // Apply a reasonable limit to the allowed size
     // of the body in bytes to prevent abuse.
-    parser_->body_limit(settings_.request_body_limit_);
+    parser_->body_limit(settings_->request_body_limit_);
 
     // Set the timeout.
     boost::beast::get_lowest_layer(derived().stream())
-        .expires_after(settings_.timeout_);
+        .expires_after(settings_->timeout_);
 
     // Read a request using the parser-oriented interface
     boost::beast::http::async_read(
@@ -174,8 +174,8 @@ struct http_session {
     }
 
     auto& queue_entry = queue_.add_entry();
-    if (settings_.http_req_cb_) {
-      settings_.http_req_cb_(
+    if (settings_->http_req_cb_) {
+      settings_->http_req_cb_(
           parser_->release(),
           [self = derived().shared_from_this(),
            &queue_entry](web_server::http_res_t&& res) {
@@ -233,7 +233,7 @@ struct http_session {
       boost::beast::http::request_parser<boost::beast::http::string_body>>
       parser_;
 
-  web_server_settings const& settings_;
+  web_server_settings_ptr settings_;
 };
 
 //------------------------------------------------------------------------------
@@ -245,8 +245,9 @@ struct plain_http_session
   // Create the session
   plain_http_session(boost::beast::tcp_stream&& stream,
                      boost::beast::flat_buffer&& buffer,
-                     web_server_settings const& settings)
-      : http_session<plain_http_session>(std::move(buffer), settings),
+                     web_server_settings_ptr settings)
+      : http_session<plain_http_session>(std::move(buffer),
+                                         std::move(settings)),
         stream_(std::move(stream)) {}
 
   // Start the session
@@ -276,7 +277,7 @@ struct plain_http_session
 
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::beast::flat_buffer&& buffer,
-                       web_server_settings const& settings) {
+                       web_server_settings_ptr settings) {
   std::make_shared<plain_http_session>(std::move(stream), std::move(buffer),
                                        settings)
       ->run();
@@ -293,14 +294,14 @@ struct ssl_http_session
   ssl_http_session(boost::beast::tcp_stream&& stream,
                    boost::asio::ssl::context& ctx,
                    boost::beast::flat_buffer&& buffer,
-                   web_server_settings const& settings)
-      : http_session<ssl_http_session>(std::move(buffer), settings),
+                   web_server_settings_ptr settings)
+      : http_session<ssl_http_session>(std::move(buffer), std::move(settings)),
         stream_(std::move(stream), ctx) {}
 
   // Start the session
   void run() {
     // Set the timeout.
-    boost::beast::get_lowest_layer(stream_).expires_after(settings_.timeout_);
+    boost::beast::get_lowest_layer(stream_).expires_after(settings_->timeout_);
 
     // Perform the SSL handshake
     // Note, this is the buffered version of the handshake.
@@ -323,7 +324,7 @@ struct ssl_http_session
   // Called by the base class
   void do_eof() {
     // Set the timeout.
-    boost::beast::get_lowest_layer(stream_).expires_after(settings_.timeout_);
+    boost::beast::get_lowest_layer(stream_).expires_after(settings_->timeout_);
 
     // Perform the SSL shutdown
     stream_.async_shutdown(ssl_http_session::on_shutdown);
@@ -359,9 +360,9 @@ private:
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::asio::ssl::context& ctx,
                        boost::beast::flat_buffer&& buffer,
-                       web_server_settings const& settings) {
+                       web_server_settings_ptr settings) {
   std::make_shared<ssl_http_session>(std::move(stream), ctx, std::move(buffer),
-                                     settings)
+                                     std::move(settings))
       ->run();
 }
 #endif

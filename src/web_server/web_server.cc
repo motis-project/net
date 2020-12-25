@@ -26,11 +26,13 @@ struct web_server::impl {
 #endif
 
   void on_http_request(http_req_cb_t cb) {
-    settings_.http_req_cb_ = std::move(cb);
+    settings_->http_req_cb_ = std::move(cb);
   }
-  void on_ws_msg(ws_msg_cb_t cb) { settings_.ws_msg_cb_ = std::move(cb); }
-  void on_ws_open(ws_open_cb_t cb) { settings_.ws_open_cb_ = std::move(cb); }
-  void on_ws_close(ws_close_cb_t cb) { settings_.ws_close_cb_ = std::move(cb); }
+  void on_ws_msg(ws_msg_cb_t cb) { settings_->ws_msg_cb_ = std::move(cb); }
+  void on_ws_open(ws_open_cb_t cb) { settings_->ws_open_cb_ = std::move(cb); }
+  void on_ws_close(ws_close_cb_t cb) {
+    settings_->ws_close_cb_ = std::move(cb);
+  }
 
   void init(std::string const& host, std::string const& port,
             boost::system::error_code& ec) {
@@ -71,15 +73,15 @@ struct web_server::impl {
   void stop() { acceptor_.close(); }
 
   void set_timeout(std::chrono::nanoseconds const& timeout) {
-    settings_.timeout_ = timeout;
+    settings_->timeout_ = timeout;
   }
 
   void set_request_body_limit(std::uint64_t limit) {
-    settings_.request_body_limit_ = limit;
+    settings_->request_body_limit_ = limit;
   }
 
   void set_request_queue_limit(std::size_t limit) {
-    settings_.request_queue_limit_ = limit;
+    settings_->request_queue_limit_ = limit;
   }
 
   void do_accept() {
@@ -107,7 +109,7 @@ struct web_server::impl {
 
   asio::io_context& ioc_;
   tcp::acceptor acceptor_;
-  web_server_settings settings_;
+  web_server_settings_ptr settings_{std::make_shared<web_server_settings>()};
 
 #if defined(NET_TLS)
   ssl::context& ctx_;

@@ -1,7 +1,7 @@
 [libressl]
   url=git@github.com:motis-project/libressl.git
   branch=master
-  commit=b9ed329a4e772152fb4e39b933fb32e55a8c26e2
+  commit=faa48d99b721dfa85fa9cc9695b2eae9dcbda503
 [zlib]
   url=git@github.com:motis-project/zlib.git
   branch=master

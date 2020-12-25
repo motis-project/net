@@ -15,4 +15,6 @@ struct web_server_settings {
   std::size_t request_queue_limit_{8};
 };
 
+using web_server_settings_ptr = std::shared_ptr<web_server_settings>;
+
 }  // namespace net

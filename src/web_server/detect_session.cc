@@ -20,13 +20,13 @@ namespace net {
 struct detect_session : public std::enable_shared_from_this<detect_session> {
   explicit detect_session(boost::asio::ip::tcp::socket&& socket,
                           boost::asio::ssl::context& ctx,
-                          web_server_settings const& settings)
-      : stream_(std::move(socket)), ctx_(ctx), settings_(settings) {}
+                          web_server_settings_ptr settings)
+      : stream_(std::move(socket)), ctx_(ctx), settings_(std::move(settings)) {}
 
   // Launch the detector
   void run() {
     // Set the timeout.
-    stream_.expires_after(settings_.timeout_);
+    stream_.expires_after(settings_->timeout_);
 
     boost::beast::async_detect_ssl(
         stream_, buffer_,
@@ -42,10 +42,11 @@ struct detect_session : public std::enable_shared_from_this<detect_session> {
     if (result) {
       // Launch SSL session
       make_http_session(std::move(stream_), ctx_, std::move(buffer_),
-                        settings_);
+                        std::move(settings_));
     } else {
       // Launch plain session
-      make_http_session(std::move(stream_), std::move(buffer_), settings_);
+      make_http_session(std::move(stream_), std::move(buffer_),
+                        std::move(settings_));
     }
   }
 
@@ -54,19 +55,20 @@ private:
   boost::asio::ssl::context& ctx_;
   boost::beast::flat_buffer buffer_;
 
-  web_server_settings const& settings_;
+  web_server_settings_ptr settings_;
 };
 
 void make_detect_session(boost::asio::ip::tcp::socket&& socket,
                          boost::asio::ssl::context& ctx,
-                         web_server_settings const& settings) {
-  std::make_shared<detect_session>(std::move(socket), ctx, settings)->run();
+                         web_server_settings_ptr settings) {
+  std::make_shared<detect_session>(std::move(socket), ctx, std::move(settings))
+      ->run();
 }
 #else
 void make_detect_session(boost::asio::ip::tcp::socket&& socket,
-                         web_server_settings const& settings) {
+                         web_server_settings_ptr settings) {
   make_http_session(boost::beast::tcp_stream{std::move(socket)},
-                    boost::beast::flat_buffer{}, settings);
+                    boost::beast::flat_buffer{}, std::move(settings));
 }
 #endif
 
