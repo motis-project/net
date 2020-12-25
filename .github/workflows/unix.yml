@@ -105,7 +105,7 @@ jobs:
             -s NO_BZIP2=1
 
       - name: Set BOOST_ROOT for GCC 9
-        if: !contains(matrix.config.cxxflags, 'libc++')
+        if: not contains(matrix.config.cxxflags, 'libc++')
         run: echo "BOOST_ROOT=$BOOST_ROOT_1_72_0" >> $GITHUB_ENV
 
       - name: Set BOOST_ROOT
