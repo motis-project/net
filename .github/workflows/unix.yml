@@ -104,11 +104,10 @@ jobs:
             --with-serialization \
             -s NO_BZIP2=1
 
-      - name: Set BOOST_ROOT for GCC 9
-        if: not contains(matrix.config.cxxflags, 'libc++')
+      - name: Set BOOST_ROOT
         run: echo "BOOST_ROOT=$BOOST_ROOT_1_72_0" >> $GITHUB_ENV
 
-      - name: Set BOOST_ROOT
+      - name: Set BOOST_ROOT for libc++
         if: contains(matrix.config.cxxflags, 'libc++')
         run: echo "BOOST_ROOT=`pwd`/boost_1_72_0" >> $GITHUB_ENV
 
