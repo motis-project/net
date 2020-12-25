@@ -87,7 +87,7 @@ jobs:
         if: steps.boostcache.outputs.cache-hit != 'true'
         run: |
           echo "using clang : 9 : ${{ matrix.config.cxx }} ;" > $HOME/user-config.jam
-          wget https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_74_0.tar.bz2
+          wget https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.bz2
           tar xf boost_1_74_0.tar.bz2
           cd boost_1_74_0
           ./bootstrap.sh
