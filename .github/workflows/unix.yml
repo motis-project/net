@@ -127,7 +127,4 @@ jobs:
           -DNET_LINT=${{ matrix.config.lint }}
 
       - name: Build
-        run: |
-          ./build/buildcache/bin/buildcache -z
-          cmake --build build --target http-client net-web_server-sample net-wss_client-sample
-          ./build/buildcache/bin/buildcache -s
+        run: cmake --build build --target http-client net-web_server-sample net-wss_client-sample
