@@ -75,9 +75,9 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-11 main" > /etc/apt/sources.list.d/llvm.list
-          sudo echo "deb-src http://apt.llvm.org/focal/ llvm-toolchain-focal-11 main" >> /etc/apt/sources.list.d/llvm.list
-          sudo apt-get update
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 11
           sudo apt-get install -y --no-install-recommends libc++-11-dev libc++abi-11-dev clang-tidy-11
 
       # ==== BOOST ====
