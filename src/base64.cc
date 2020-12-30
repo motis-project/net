@@ -12,10 +12,9 @@
 
 using namespace boost::archive::iterators;
 
-typedef transform_width<
-    binary_from_base64<remove_whitespace<std::string::const_iterator>>, 8, 6>
-    it_binary_t;
-typedef base64_from_binary<transform_width<const char*, 6, 8>> base64_text;
+using it_binary_t = transform_width<
+    binary_from_base64<remove_whitespace<std::string::const_iterator>>, 8, 6>;
+using base64_text= base64_from_binary<transform_width<const char*, 6, 8>>;
 
 namespace net {
 
@@ -36,7 +35,7 @@ std::string decode_base64(std::string base64) {
 }
 
 // From http://stackoverflow.com/a/7053808
-std::string encode_base64(std::string plain) {
+std::string encode_base64(std::string const& plain) {
   std::stringstream os;
   std::copy(base64_text(plain.c_str()),
             base64_text(plain.c_str() + plain.size()),

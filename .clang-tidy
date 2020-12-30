@@ -58,7 +58,7 @@ Checks: "*,\
 -fuchsia-default-arguments-calls,\
 -fuchsia-default-arguments-declarations"
 WarningsAsErrors: '*'
-HeaderFilterRegex: '^${RELATIVE_SOURCE_DIR}(include/)'
+HeaderFilterRegex: '^../(include/)'
 AnalyzeTemporaryDtors: false
 User:            root
 CheckOptions:

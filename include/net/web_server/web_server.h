@@ -66,18 +66,18 @@ struct web_server {
   web_server& operator=(web_server const&) = delete;
 
   void init(std::string const& host, std::string const& port,
-            boost::system::error_code& ec);
-  void run();
-  void stop();
+            boost::system::error_code& ec) const;
+  void run() const;
+  void stop() const;
 
-  void set_timeout(std::chrono::nanoseconds const& timeout);
-  void set_request_body_limit(std::uint64_t limit);
-  void set_request_queue_limit(std::size_t limit);
+  void set_timeout(std::chrono::nanoseconds const& timeout) const;
+  void set_request_body_limit(std::uint64_t limit) const;
+  void set_request_queue_limit(std::size_t limit) const;
 
-  void on_http_request(http_req_cb_t);
-  void on_ws_msg(ws_msg_cb_t);
-  void on_ws_open(ws_open_cb_t);
-  void on_ws_close(ws_close_cb_t);
+  void on_http_request(http_req_cb_t) const;
+  void on_ws_msg(ws_msg_cb_t) const;
+  void on_ws_open(ws_open_cb_t) const;
+  void on_ws_close(ws_close_cb_t) const;
 
   struct impl;
   std::unique_ptr<impl> impl_;

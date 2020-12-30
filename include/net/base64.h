@@ -6,7 +6,7 @@
 namespace net {
 
 std::string decode_base64(std::string base64);
-std::string encode_base64(std::string plain);
+std::string encode_base64(std::string const& plain);
 
 }  // namespace net
 
