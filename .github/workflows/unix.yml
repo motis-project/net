@@ -107,7 +107,7 @@ jobs:
           ./bootstrap.sh
           ./b2 -j6 \
             link=static threading=multi variant=release \
-            toolset=clang-9 ${{ matrix.config.boostcxxflags }} \
+            toolset=clang-11 ${{ matrix.config.boostcxxflags }} \
             --with-system \
             --with-filesystem \
             --with-iostreams \
