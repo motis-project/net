@@ -106,7 +106,6 @@ jobs:
             -s NO_BZIP2=1
 
       - name: Set BOOST_ROOT
-        if: contains(matrix.config.cxxflags, 'libc++')
         run: echo "BOOST_ROOT=`pwd`/boost_1_74_0" >> $GITHUB_ENV
 
       # ==== BUILD ====
