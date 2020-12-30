@@ -14,7 +14,7 @@ using namespace boost::archive::iterators;
 
 using it_binary_t = transform_width<
     binary_from_base64<remove_whitespace<std::string::const_iterator>>, 8, 6>;
-using base64_text= base64_from_binary<transform_width<const char*, 6, 8>>;
+using base64_text = base64_from_binary<transform_width<const char*, 6, 8>>;
 
 namespace net {
 
