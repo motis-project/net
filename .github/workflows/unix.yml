@@ -32,6 +32,7 @@ jobs:
             cc: clang
             mode: Release
             cxxflags: -stdlib=libc++
+            boostcxxflags: cxxflags=-stdlib=libc++
             os: macos-latest
             artifact: macos
           - name: GCC 9 Release
@@ -50,6 +51,7 @@ jobs:
             cc: clang-9
             mode: Release
             cxxflags: -stdlib=libc++
+            boostcxxflags: cxxflags=-stdlib=libc++
             ldflags: -lc++abi
             os: ubuntu-latest
           - name: Clang Tidy
@@ -57,6 +59,7 @@ jobs:
             cc: clang-9
             mode: Debug
             cxxflags: -stdlib=libc++
+            boostcxxflags: cxxflags=-stdlib=libc++
             ldflags: -lc++abi
             lint: true
             os: ubuntu-latest
@@ -73,17 +76,15 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: sudo apt-get install -y --no-install-recommends libc++-9-dev libc++abi-9-dev clang-tidy-9
 
-      # ==== CACHING ====
+      # ==== BOOST ====
       - name: libc++ Boost Cache
         uses: actions/cache@v1
         with:
           path: boost_1_74_0
           key: boost_1_74_0-${{ matrix.config.os }}-${{ matrix.config.cxx }}
         id: boostcache
-        if: contains(matrix.config.cxxflags, 'libc++')
 
-      # ==== BOOST FOR LIBCXX ====
-      - name: Boost for libc++
+      - name: Build Boost
         if: steps.boostcache.outputs.cache-hit != 'true'
         run: |
           echo "using clang : 9 : ${{ matrix.config.cxx }} ;" > $HOME/user-config.jam
@@ -93,7 +94,7 @@ jobs:
           ./bootstrap.sh
           ./b2 -j6 \
             link=static threading=multi variant=release \
-            toolset=clang-9 cxxflags="${{ matrix.config.cxxflags }}" \
+            toolset=clang-9 ${{ matrix.config.boostcxxflags }} \
             --with-system \
             --with-filesystem \
             --with-iostreams \
