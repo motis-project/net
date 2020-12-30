@@ -77,7 +77,7 @@ jobs:
         run: |
           echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-11 main" > /etc/apt/sources.d/llvm.list
           echo "deb-src http://apt.llvm.org/focal/ llvm-toolchain-focal-11 main" >> /etc/apt/sources.d/llvm.list
-          sudo apt update
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends libc++-11-dev libc++abi-11-dev clang-tidy-11
 
       # ==== BOOST ====
