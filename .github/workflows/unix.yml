@@ -13,6 +13,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install clang-format
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 11
+          sudo apt-get install -y --no-install-recommends clang-format-11
+
       - name: Format files
         run: find src include example -type f -a \( -name "*.cc" -o -name "*.h" \) -print0 | xargs -0 clang-format-11 -i
 
