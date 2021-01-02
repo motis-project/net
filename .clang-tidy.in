@@ -56,7 +56,8 @@ Checks: "*,\
 -cert-dcl21-cpp,\
 -modernize-use-trailing-return-type,\
 -fuchsia-default-arguments-calls,\
--fuchsia-default-arguments-declarations"
+-fuchsia-default-arguments-declarations,\
+-misc-no-recursion"
 WarningsAsErrors: '*'
 HeaderFilterRegex: '^${RELATIVE_SOURCE_DIR}(include/)'
 AnalyzeTemporaryDtors: false

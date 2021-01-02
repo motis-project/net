@@ -4,8 +4,8 @@
 
 namespace net::http::client {
 
-static char const* method_to_string[] = {"GET", "POST", "DELETE", "PUT",
-                                         "OPTIONS"};
+static char const* const method_to_string[] = {"GET", "POST", "DELETE", "PUT",
+                                               "OPTIONS"};
 
 request::request(std::string const& addr, enum method m, request::str_map hdr,
                  std::string body)

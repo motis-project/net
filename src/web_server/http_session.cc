@@ -279,7 +279,7 @@ void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::beast::flat_buffer&& buffer,
                        web_server_settings_ptr settings) {
   std::make_shared<plain_http_session>(std::move(stream), std::move(buffer),
-                                       settings)
+                                       std::move(settings))
       ->run();
 }
 

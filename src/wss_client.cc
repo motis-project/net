@@ -54,8 +54,10 @@ struct wss_client::impl : public boost::asio::coroutine,
 
       // Connect to endpoint.
       yield asio::async_connect(
-          ws_.next_layer().next_layer(), results.begin(), results.end(),
-          std::bind(&impl::on_connect, this, me, std::placeholders::_1, cb));
+          ws_.next_layer().next_layer(), results,
+          [me, cb](boost::system::error_code const& e, tcp::endpoint const&) {
+            me->on_connect(me, e, cb);
+          });
       return_on_error("connect");
 
       // SSL handshake.

@@ -31,8 +31,10 @@ tcp::~tcp() {
 
 void tcp::connect(connect_cb cb) {
   if (use_timeout_) {
-    req_timeout_timer_.async_wait(std::bind(
-        &tcp::timer_callback, this, shared_from_this(), std::placeholders::_1));
+    req_timeout_timer_.async_wait(
+        [me = shared_from_this()](boost::system::error_code const& ec) {
+          me->timer_callback(me, ec);
+        });
   }
   return connect(shared_from_this(), std::move(cb));
 }
@@ -56,8 +58,11 @@ void tcp::resolve(tcp_ptr self, connect_cb cb) {
   asio::ip::tcp::resolver::query query(asio::ip::tcp::v4(), host_, port_,
                                        asio::ip::resolver_query_base::flags());
   return resolver_.async_resolve(
-      query, std::bind(&tcp::on_resolve, this, std::move(self), std::move(cb),
-                       std::placeholders::_1, std::placeholders::_2));
+      query, [self = std::move(self), cb = std::move(cb)](
+                 boost::system::error_code ec,
+                 asio::ip::tcp::resolver::iterator iterator) mutable {
+        self->on_resolve(self, std::move(cb), ec, std::move(iterator));
+      });
 }
 
 void tcp::on_resolve(tcp_ptr self, connect_cb cb, boost::system::error_code ec,
@@ -65,8 +70,11 @@ void tcp::on_resolve(tcp_ptr self, connect_cb cb, boost::system::error_code ec,
   if (!ec) {
     return asio::async_connect(
         socket_, std::move(iterator),
-        std::bind(&tcp::on_connect, this, std::move(self), std::move(cb),
-                  std::placeholders::_1, std::placeholders::_2));
+        [self = std::move(self), cb = std::move(cb)](
+            boost::system::error_code const& ec,
+            asio::ip::tcp::resolver::iterator const& it) {
+          self->on_connect(self, cb, ec, it);
+        });
   } else {
     finally(ec);
     return cb(self, ec);
@@ -84,7 +92,7 @@ void tcp::on_connect(tcp_ptr self, const connect_cb& cb,
   return cb(std::move(self), ec);
 }
 
-void tcp::timer_callback(const tcp_ptr&, boost::system::error_code const& ec) {
+void tcp::timer_callback(tcp_ptr const&, boost::system::error_code const& ec) {
   if (asio::error::operation_aborted != ec) {
     cancel();
   }
