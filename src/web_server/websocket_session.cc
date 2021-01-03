@@ -170,7 +170,7 @@ struct plain_websocket_session
   // Create the session
   explicit plain_websocket_session(boost::beast::tcp_stream&& stream,
                                    web_server_settings_ptr settings)
-      : websocket_session<plain_websocket_session>(settings),
+      : websocket_session<plain_websocket_session>(std::move(settings)),
         ws_(std::move(stream)) {}
 
   // Called by the base class
@@ -187,9 +187,8 @@ private:
 void make_websocket_session(
     boost::beast::tcp_stream stream,
     boost::beast::http::request<boost::beast::http::string_body> req,
-    web_server_settings_ptr settings) {
-  std::make_shared<plain_websocket_session>(std::move(stream),
-                                            std::move(settings))
+    web_server_settings_ptr const& settings) {
+  std::make_shared<plain_websocket_session>(std::move(stream), settings)
       ->run(std::move(req));
 }
 
@@ -225,9 +224,8 @@ private:
 void make_websocket_session(
     boost::beast::ssl_stream<boost::beast::tcp_stream> stream,
     boost::beast::http::request<boost::beast::http::string_body> req,
-    web_server_settings_ptr settings) {
-  std::make_shared<ssl_websocket_session>(std::move(stream),
-                                          std::move(settings))
+    web_server_settings_ptr const& settings) {
+  std::make_shared<ssl_websocket_session>(std::move(stream), settings)
       ->run(std::move(req));
 }
 #endif

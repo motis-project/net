@@ -15,7 +15,7 @@ using boost::system::error_code;
 
 namespace net::http::client {
 
-boost::regex chunk_size_rx("\r?\n?[0-9a-fA-F]+\r\n");
+static boost::regex const chunk_size_rx("\r?\n?[0-9a-fA-F]+\r\n");
 
 template <typename C>
 basic_http_client<C>::basic_http_client(
@@ -35,10 +35,9 @@ void basic_http_client<C>::query(request& req, callback cb) {
 
   request_ = req.to_str();
 
-  auto connect_cb =
-      std::bind(&basic_http_client<C>::on_connect, this, std::move(cb),
-                std::placeholders::_1, std::placeholders::_2);
-  static_cast<C*>(this)->connect(std::move(connect_cb));
+  static_cast<C*>(this)->connect([this, cb](auto&& v1, auto&& v2) {
+    static_cast<basic_http_client<C>*>(this)->on_connect(cb, v1, v2);
+  });
 }
 
 template <typename C>
@@ -82,9 +81,11 @@ void basic_http_client<C>::transfer(std::shared_ptr<C> self, callback cb,
       boost::asio::detail::coroutine_ref(this) = 0;
     }
 
-    using std::placeholders::_1;
-    auto re = std::bind(&basic_http_client<C>::transfer, this, self, cb, _1);
-    std::size_t read, chunk_size, chunk_bytes, to_transfer, original;
+    auto re = [this, self, cb](error_code ec, auto&&) {
+      transfer(self, cb, ec);
+    };
+    std::size_t read{0U}, chunk_size{0U}, chunk_bytes{0U}, to_transfer{0U},
+        original{0U};
 
     reenter(this) {
       yield asio::async_write(my.socket_, asio::buffer(request_), re);

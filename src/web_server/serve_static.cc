@@ -12,7 +12,7 @@ namespace net {
 inline std::string_view mime_type(beast::string_view path) {
   using beast::iequals;
   auto const ext = [&path] {
-    auto const pos = path.rfind(".");
+    auto const pos = path.rfind('.');
     if (pos == beast::string_view::npos) {
       return beast::string_view{};
     }

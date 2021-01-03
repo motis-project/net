@@ -54,8 +54,10 @@ struct wss_client::impl : public boost::asio::coroutine,
 
       // Connect to endpoint.
       yield asio::async_connect(
-          ws_.next_layer().next_layer(), results.begin(), results.end(),
-          std::bind(&impl::on_connect, this, me, std::placeholders::_1, cb));
+          ws_.next_layer().next_layer(), results,
+          [me, cb](boost::system::error_code const& e, tcp::endpoint const&) {
+            me->on_connect(me, e, cb);
+          });
       return_on_error("connect");
 
       // SSL handshake.
@@ -154,25 +156,25 @@ wss_client::wss_client(asio::io_service& ios, asio::ssl::context& ctx,
 
 wss_client::~wss_client() = default;
 
-void wss_client::send(std::string const& msg, bool binary) {
+void wss_client::send(std::string const& msg, bool binary) const {
   if (impl_) {
     impl_->send(msg, binary);
   }
 }
 
-void wss_client::run(const std::function<void(error_code)>& cb) {
+void wss_client::run(const std::function<void(error_code)>& cb) const {
   if (impl_) {
     impl_->run(cb);
   }
 }
 
-void wss_client::on_msg(std::function<void(std::string, bool)> fn) {
+void wss_client::on_msg(std::function<void(std::string, bool)> fn) const {
   if (impl_) {
     impl_->on_msg(std::move(fn));
   }
 }
 
-void wss_client::on_fail(std::function<void(error_code)> fn) {
+void wss_client::on_fail(std::function<void(error_code)> fn) const {
   if (impl_) {
     impl_->on_fail(std::move(fn));
   }

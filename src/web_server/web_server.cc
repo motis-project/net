@@ -25,12 +25,16 @@ struct web_server::impl {
   impl(asio::io_context& ioc) : ioc_{ioc}, acceptor_{ioc} {}
 #endif
 
-  void on_http_request(http_req_cb_t cb) {
+  void on_http_request(http_req_cb_t cb) const {
     settings_->http_req_cb_ = std::move(cb);
   }
-  void on_ws_msg(ws_msg_cb_t cb) { settings_->ws_msg_cb_ = std::move(cb); }
-  void on_ws_open(ws_open_cb_t cb) { settings_->ws_open_cb_ = std::move(cb); }
-  void on_ws_close(ws_close_cb_t cb) {
+  void on_ws_msg(ws_msg_cb_t cb) const {
+    settings_->ws_msg_cb_ = std::move(cb);
+  }
+  void on_ws_open(ws_open_cb_t cb) const {
+    settings_->ws_open_cb_ = std::move(cb);
+  }
+  void on_ws_close(ws_close_cb_t cb) const {
     settings_->ws_close_cb_ = std::move(cb);
   }
 
@@ -72,15 +76,15 @@ struct web_server::impl {
 
   void stop() { acceptor_.close(); }
 
-  void set_timeout(std::chrono::nanoseconds const& timeout) {
+  void set_timeout(std::chrono::nanoseconds const& timeout) const {
     settings_->timeout_ = timeout;
   }
 
-  void set_request_body_limit(std::uint64_t limit) {
+  void set_request_body_limit(std::uint64_t limit) const {
     settings_->request_body_limit_ = limit;
   }
 
-  void set_request_queue_limit(std::size_t limit) {
+  void set_request_queue_limit(std::size_t limit) const {
     settings_->request_queue_limit_ = limit;
   }
 
@@ -127,37 +131,39 @@ web_server::web_server(asio::io_context& ioc)
 web_server::~web_server() = default;
 
 void web_server::init(std::string const& host, std::string const& port,
-                      boost::system::error_code& ec) {
+                      boost::system::error_code& ec) const {
   impl_->init(host, port, ec);
 }
 
-void web_server::run() { impl_->run(); }
+void web_server::run() const { impl_->run(); }
 
-void web_server::stop() { impl_->stop(); }
+void web_server::stop() const { impl_->stop(); }
 
-void web_server::set_timeout(std::chrono::nanoseconds const& timeout) {
+void web_server::set_timeout(std::chrono::nanoseconds const& timeout) const {
   impl_->set_timeout(timeout);
 }
 
-void web_server::set_request_body_limit(std::uint64_t limit) {
+void web_server::set_request_body_limit(std::uint64_t limit) const {
   impl_->set_request_body_limit(limit);
 }
 
-void web_server::set_request_queue_limit(std::size_t limit) {
+void web_server::set_request_queue_limit(std::size_t limit) const {
   impl_->set_request_queue_limit(limit);
 }
 
-void web_server::on_http_request(http_req_cb_t cb) {
+void web_server::on_http_request(http_req_cb_t cb) const {
   impl_->on_http_request(std::move(cb));
 }
 
-void web_server::on_ws_msg(ws_msg_cb_t cb) { impl_->on_ws_msg(std::move(cb)); }
+void web_server::on_ws_msg(ws_msg_cb_t cb) const {
+  impl_->on_ws_msg(std::move(cb));
+}
 
-void web_server::on_ws_open(ws_open_cb_t cb) {
+void web_server::on_ws_open(ws_open_cb_t cb) const {
   impl_->on_ws_open(std::move(cb));
 }
 
-void web_server::on_ws_close(ws_close_cb_t cb) {
+void web_server::on_ws_close(ws_close_cb_t cb) const {
   impl_->on_ws_close(std::move(cb));
 }
 

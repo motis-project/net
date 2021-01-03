@@ -8,7 +8,8 @@
 
 namespace net::http::client {
 
-static boost::regex url_regex("(.*://)([a-zA-Z0-9\\.\\-]+)(:[0-9]*)?(.*)");
+static boost::regex const url_regex(
+    "(.*://)([a-zA-Z0-9\\.\\-]+)(:[0-9]*)?(.*)");
 
 url::url(std::string host, std::string port, std::string path)
     : str_(std::string("http://") + host + ":" + port + path),

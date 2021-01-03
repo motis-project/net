@@ -24,8 +24,10 @@ ssl::~ssl() {
 }
 
 void ssl::connect(connect_cb cb) {
-  req_timeout_timer_.async_wait(std::bind(
-      &ssl::timer_callback, this, shared_from_this(), std::placeholders::_1));
+  req_timeout_timer_.async_wait(
+      [me = shared_from_this()](boost::system::error_code const& ec) {
+        me->timer_callback(me, ec);
+      });
   return connect(shared_from_this(), std::move(cb));
 }
 
@@ -48,8 +50,11 @@ void ssl::connect(ssl_ptr self, connect_cb cb) {
 void ssl::resolve(ssl_ptr self, connect_cb cb) {
   boost::asio::ip::tcp::resolver::query query(host_, port_);
   return resolver_.async_resolve(
-      query, std::bind(&ssl::on_resolve, this, std::move(self), std::move(cb),
-                       std::placeholders::_1, std::placeholders::_2));
+      query, [self = std::move(self), cb = std::move(cb)](
+                 boost::system::error_code const& ec,
+                 boost::asio::ip::tcp::resolver::iterator it) mutable {
+        self->on_resolve(self, std::move(cb), ec, std::move(it));
+      });
 }
 
 void ssl::on_resolve(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
@@ -57,8 +62,11 @@ void ssl::on_resolve(ssl_ptr self, connect_cb cb, boost::system::error_code ec,
   if (!ec) {
     return boost::asio::async_connect(
         socket_.lowest_layer(), std::move(iterator),
-        std::bind(&ssl::on_connect, this, std::move(self), std::move(cb),
-                  std::placeholders::_1, std::placeholders::_2));
+        [self = std::move(self), cb = std::move(cb)](
+            boost::system::error_code ec,
+            boost::asio::ip::tcp::resolver::iterator const& it) {
+          self->on_connect(self, cb, ec, it);
+        });
   } else {
     finally(ec);
     return cb(self, ec);
@@ -69,9 +77,10 @@ void ssl::on_connect(ssl_ptr const& self, const connect_cb& cb,
                      boost::system::error_code ec,
                      boost::asio::ip::tcp::resolver::iterator const&) {
   if (!ec) {
-    return socket_.async_handshake(
-        boost::asio::ssl::stream_base::client,
-        std::bind(&ssl::on_handshake, this, self, cb, std::placeholders::_1));
+    return socket_.async_handshake(boost::asio::ssl::stream_base::client,
+                                   [self, cb](boost::system::error_code ec) {
+                                     self->on_handshake(self, cb, ec);
+                                   });
   } else {
     finally(ec);
     return cb(self, ec);
