@@ -42,11 +42,10 @@ struct detect_session : public std::enable_shared_from_this<detect_session> {
     if (result) {
       // Launch SSL session
       make_http_session(std::move(stream_), ctx_, std::move(buffer_),
-                        std::move(settings_));
+                        settings_);
     } else {
       // Launch plain session
-      make_http_session(std::move(stream_), std::move(buffer_),
-                        std::move(settings_));
+      make_http_session(std::move(stream_), std::move(buffer_), settings_);
     }
   }
 
