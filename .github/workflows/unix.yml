@@ -95,17 +95,17 @@ jobs:
       - name: libc++ Boost Cache
         uses: actions/cache@v1
         with:
-          path: boost_1_74_0
-          key: boost_1_74_0-${{ matrix.config.os }}-${{ matrix.config.cxx }}
+          path: boost_1_75_0
+          key: boost_1_75_0-${{ matrix.config.os }}-${{ matrix.config.cxx }}
         id: boostcache
 
       - name: Build Boost
         if: steps.boostcache.outputs.cache-hit != 'true'
         run: |
           echo "using clang : 11 : ${{ matrix.config.cxx }} ;" > $HOME/user-config.jam
-          wget https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.bz2
-          tar xf boost_1_74_0.tar.bz2
-          cd boost_1_74_0
+          wget https://dl.bintray.com/boostorg/release/1.75.0/source/boost_1_75_0.tar.bz2
+          tar xf boost_1_75_0.tar.bz2
+          cd boost_1_75_0
           ./bootstrap.sh
           ./b2 -j6 \
             link=static threading=multi variant=release \
@@ -121,7 +121,7 @@ jobs:
             -s NO_BZIP2=1
 
       - name: Set BOOST_ROOT
-        run: echo "BOOST_ROOT=`pwd`/boost_1_74_0" >> $GITHUB_ENV
+        run: echo "BOOST_ROOT=`pwd`/boost_1_75_0" >> $GITHUB_ENV
 
       # ==== BUILD ====
       - name: CMake
