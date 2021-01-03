@@ -277,9 +277,9 @@ struct plain_http_session
 
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::beast::flat_buffer&& buffer,
-                       web_server_settings_ptr settings) {
+                       web_server_settings_ptr const& settings) {
   std::make_shared<plain_http_session>(std::move(stream), std::move(buffer),
-                                       std::move(settings))
+                                       settings)
       ->run();
 }
 
@@ -360,9 +360,9 @@ private:
 void make_http_session(boost::beast::tcp_stream&& stream,
                        boost::asio::ssl::context& ctx,
                        boost::beast::flat_buffer&& buffer,
-                       web_server_settings_ptr settings) {
+                       web_server_settings_ptr const& settings) {
   std::make_shared<ssl_http_session>(std::move(stream), ctx, std::move(buffer),
-                                     std::move(settings))
+                                     settings)
       ->run();
 }
 #endif
