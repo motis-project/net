@@ -22,7 +22,6 @@ find_package(Threads)
 
 option(NET_LINT "Run clang-tidy with the compiler." OFF)
 if(NET_LINT)
-  # clang-tidy will be run on all targets defined hereafter
   include(cmake/clang-tidy.cmake)
 endif()
 

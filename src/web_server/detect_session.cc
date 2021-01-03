@@ -60,15 +60,14 @@ private:
 
 void make_detect_session(boost::asio::ip::tcp::socket&& socket,
                          boost::asio::ssl::context& ctx,
-                         web_server_settings_ptr settings) {
-  std::make_shared<detect_session>(std::move(socket), ctx, std::move(settings))
-      ->run();
+                         web_server_settings_ptr const& settings) {
+  std::make_shared<detect_session>(std::move(socket), ctx, settings)->run();
 }
 #else
 void make_detect_session(boost::asio::ip::tcp::socket&& socket,
-                         web_server_settings_ptr settings) {
+                         web_server_settings_ptr const& settings) {
   make_http_session(boost::beast::tcp_stream{std::move(socket)},
-                    boost::beast::flat_buffer{}, std::move(settings));
+                    boost::beast::flat_buffer{}, settings);
 }
 #endif
 
