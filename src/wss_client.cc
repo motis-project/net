@@ -156,25 +156,25 @@ wss_client::wss_client(asio::io_service& ios, asio::ssl::context& ctx,
 
 wss_client::~wss_client() = default;
 
-void wss_client::send(std::string const& msg, bool binary) {
+void wss_client::send(std::string const& msg, bool binary) const {
   if (impl_) {
     impl_->send(msg, binary);
   }
 }
 
-void wss_client::run(const std::function<void(error_code)>& cb) {
+void wss_client::run(const std::function<void(error_code)>& cb) const {
   if (impl_) {
     impl_->run(cb);
   }
 }
 
-void wss_client::on_msg(std::function<void(std::string, bool)> fn) {
+void wss_client::on_msg(std::function<void(std::string, bool)> fn) const {
   if (impl_) {
     impl_->on_msg(std::move(fn));
   }
 }
 
-void wss_client::on_fail(std::function<void(error_code)> fn) {
+void wss_client::on_fail(std::function<void(error_code)> fn) const {
   if (impl_) {
     impl_->on_fail(std::move(fn));
   }

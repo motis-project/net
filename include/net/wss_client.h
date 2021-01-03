@@ -17,10 +17,10 @@ struct wss_client {
              std::string const& host, std::string const& port);
   ~wss_client();
 
-  void run(const std::function<void(boost::system::error_code)>&);
-  void send(std::string const&, bool binary);
-  void on_msg(std::function<void(std::string, bool /* binary */)>);
-  void on_fail(std::function<void(boost::system::error_code)>);
+  void run(const std::function<void(boost::system::error_code)>&) const;
+  void send(std::string const&, bool binary) const;
+  void on_msg(std::function<void(std::string, bool /* binary */)>) const;
+  void on_fail(std::function<void(boost::system::error_code)>) const;
   void stop();
 
   struct impl;
