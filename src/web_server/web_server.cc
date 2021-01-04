@@ -22,7 +22,7 @@ struct web_server::impl {
   impl(asio::io_context& ioc, asio::ssl::context& ctx)
       : ioc_{ioc}, acceptor_{ioc}, ctx_{ctx} {}
 #else
-  impl(asio::io_context& ioc) : ioc_{ioc}, acceptor_{ioc} {}
+  explicit impl(asio::io_context& ioc) : ioc_{ioc}, acceptor_{ioc} {}
 #endif
 
   void on_http_request(http_req_cb_t cb) const {
