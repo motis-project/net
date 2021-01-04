@@ -10,14 +10,6 @@ endif()
 
 include(cmake/pkg.cmake)
 
-if(WIN32)
-  set(Boost_USE_STATIC_LIBS ON)
-  set(Boost_USE_MULTITHREADED ON)
-  set(Boost_USE_STATIC_RUNTIME ON)
-endif()
-find_package(Boost 1.70.0 REQUIRED COMPONENTS system iostreams regex)
-add_definitions(/DBOOST_ALL_NO_LIB=1)
-
 find_package(Threads)
 
 option(NET_LINT "Run clang-tidy with the compiler." OFF)
@@ -28,11 +20,8 @@ endif()
 file(GLOB_RECURSE web-server-src src/web_server/*.cc)
 add_library(web-server ${web-server-src} src/base64.cc)
 target_compile_features(web-server PUBLIC cxx_std_17)
-target_link_libraries(web-server
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${Boost_SYSTEM_LIBRARY}
-)
-target_include_directories(web-server SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
+target_link_libraries(web-server ${CMAKE_THREAD_LIBS_INIT} boost)
+target_include_directories(web-server SYSTEM PUBLIC include)
 if(MSVC)
   set_target_properties(web-server PROPERTIES COMPILE_FLAGS "/bigobj")
   target_compile_definitions(web-server PUBLIC _WIN32_WINNT=0x0601)
@@ -43,12 +32,12 @@ add_library(web-server-tls ${web-server-src} src/base64.cc)
 target_compile_features(web-server-tls PUBLIC cxx_std_17)
 target_link_libraries(web-server-tls
   ${CMAKE_THREAD_LIBS_INIT}
-  ${Boost_SYSTEM_LIBRARY}
+  boost
   ssl
   crypto
 )
 target_compile_definitions(web-server-tls PUBLIC NET_TLS=1)
-target_include_directories(web-server-tls SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
+target_include_directories(web-server-tls SYSTEM PUBLIC include)
 if(MSVC)
   set_target_properties(web-server-tls PROPERTIES COMPILE_FLAGS "/bigobj")
   target_compile_definitions(web-server-tls PUBLIC _WIN32_WINNT=0x0601)
@@ -60,12 +49,12 @@ add_library(wss-client ${wss-client-src})
 target_compile_features(wss-client PUBLIC cxx_std_17)
 target_link_libraries(wss-client
   ${CMAKE_THREAD_LIBS_INIT}
-  ${Boost_SYSTEM_LIBRARY}
+  boost
   ssl
   crypto
 )
 target_include_directories(wss-client PUBLIC include)
-target_include_directories(wss-client SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
+target_include_directories(wss-client SYSTEM PUBLIC include)
 if(WIN32)
   target_compile_definitions(wss-client PUBLIC _WIN32_WINNT=0x0601)
 endif()
@@ -79,15 +68,14 @@ add_library(http-client
 target_compile_features(http-client PUBLIC cxx_std_17)
 target_link_libraries(http-client
   ${CMAKE_THREAD_LIBS_INIT}
-  ${Boost_SYSTEM_LIBRARY}
-  ${Boost_IOSTREAMS_LIBRARY}
-  ${Boost_REGEX_LIBRARY}
+  boost
+  boost-iostreams
+  boost-regex
   zlibstatic
   ssl
   crypto
 )
-target_include_directories(http-client PUBLIC include)
-target_include_directories(http-client SYSTEM PUBLIC include ${Boost_INCLUDE_DIR})
+target_include_directories(http-client SYSTEM PUBLIC include)
 if(WIN32)
   target_compile_definitions(http-client PUBLIC _WIN32_WINNT=0x0601)
 endif()

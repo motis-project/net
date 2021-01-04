@@ -6,3 +6,7 @@
   url=git@github.com:motis-project/zlib.git
   branch=master
   commit=8e7c86d3a0e49101b9a67d74c4a07345dcb0e485
+[boost]
+  url=git@github.com:motis-project/boost.git
+  branch=master
+  commit=2ea1215e76a38936bf966a11c8a6ac1c41aee04a
