@@ -39,7 +39,7 @@ target_link_libraries(web-server-tls
 target_compile_definitions(web-server-tls PUBLIC NET_TLS=1)
 target_include_directories(web-server-tls SYSTEM PUBLIC include)
 if(MSVC)
-  set_target_properties(web-server-tls PROPERTIES COMPILE_FLAGS "/bigobj")
+  target_compile_options(web-server-tls PUBLIC "/bigobj")
   target_compile_definitions(web-server-tls PUBLIC _WIN32_WINNT=0x0601)
 endif()
 target_compile_definitions(web-server-tls PUBLIC BOOST_BEAST_USE_STD_STRING_VIEW=1)
@@ -56,6 +56,7 @@ target_link_libraries(wss-client
 target_include_directories(wss-client PUBLIC include)
 target_include_directories(wss-client SYSTEM PUBLIC include)
 if(WIN32)
+  target_compile_options(wss-client PUBLIC "/bigobj")
   target_compile_definitions(wss-client PUBLIC _WIN32_WINNT=0x0601)
 endif()
 
