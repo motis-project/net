@@ -9,6 +9,7 @@ struct web_server_settings {
   web_server::ws_msg_cb_t ws_msg_cb_;
   web_server::ws_open_cb_t ws_open_cb_;
   web_server::ws_close_cb_t ws_close_cb_;
+  web_server::ws_upgrade_ok_cb_t ws_upgrade_ok_;
 
   std::chrono::nanoseconds timeout_{std::chrono::seconds(60)};
   std::uint64_t request_body_limit_{1024 * 1024};

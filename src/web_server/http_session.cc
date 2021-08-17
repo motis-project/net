@@ -162,7 +162,9 @@ struct http_session {
     }
 
     // See if it is a WebSocket Upgrade
-    if (boost::beast::websocket::is_upgrade(parser_->get())) {
+    if (boost::beast::websocket::is_upgrade(parser_->get()) &&
+        (!settings_->ws_upgrade_ok_ ||
+         settings_->ws_upgrade_ok_(parser_->get()))) {
       // Disable the timeout.
       // The websocket::stream uses its own timeout settings.
       boost::beast::get_lowest_layer(derived().stream()).expires_never();

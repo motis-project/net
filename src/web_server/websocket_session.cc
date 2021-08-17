@@ -22,7 +22,9 @@ struct websocket_session : public ws_session {
       : settings_(std::move(settings)) {}
 
   ~websocket_session() {
-    if (settings_->ws_close_cb_) {
+    if (on_close_) {
+      on_close_();
+    } else if (settings_->ws_close_cb_) {
       settings_->ws_close_cb_(this);
     }
   }
@@ -36,6 +38,15 @@ struct websocket_session : public ws_session {
   void run(boost::beast::http::request<boost::beast::http::string_body>&& req) {
     // Accept the WebSocket upgrade request
     do_accept(std::move(req));
+  }
+
+  void on_close(std::function<void()>&& fn) override {
+    on_close_ = std::move(fn);
+  }
+
+  void on_msg(
+      std::function<void(std::string const&, ws_msg_type)>&& fn) override {
+    on_msg_ = std::move(fn);
   }
 
   void send(std::string msg, ws_msg_type type, send_cb_t cb) override {
@@ -62,18 +73,20 @@ private:
     // Accept the websocket handshake
     derived().ws().async_accept(
         req, boost::beast::bind_front_handler(&websocket_session::on_accept,
-                                              derived().shared_from_this()));
+                                              derived().shared_from_this(),
+                                              std::string{req.target()}));
   }
 
-  void on_accept(boost::beast::error_code ec) {
+  void on_accept(std::string const& target, boost::beast::error_code ec) {
     if (ec) {
       return fail(ec, "accept");
     }
 
     if (settings_->ws_open_cb_) {
       boost::asio::post(derived().ws().get_executor(),
-                        [&, self = derived().shared_from_this()] {
-                          settings_->ws_open_cb_(self, derived().is_ssl());
+                        [&, self = derived().shared_from_this(), target] {
+                          settings_->ws_open_cb_(self, target,
+                                                 derived().is_ssl());
                         });
     }
 
@@ -100,7 +113,11 @@ private:
       return fail(ec, "read");
     }
 
-    if (settings_->ws_msg_cb_) {
+    if (on_msg_) {
+      on_msg_(
+          boost::beast::buffers_to_string(buffer_.data()),
+          derived().ws().got_text() ? ws_msg_type::TEXT : ws_msg_type::BINARY);
+    } else if (settings_->ws_msg_cb_) {
       settings_->ws_msg_cb_(
           derived().shared_from_this(),
           boost::beast::buffers_to_string(buffer_.data()),
@@ -159,6 +176,9 @@ private:
 
   std::queue<std::tuple<std::string, ws_msg_type, send_cb_t>> send_queue_;
   bool send_active_{false};
+
+  std::function<void()> on_close_;
+  std::function<void(std::string const&, ws_msg_type)> on_msg_;
 };
 
 //------------------------------------------------------------------------------
