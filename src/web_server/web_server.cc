@@ -37,6 +37,9 @@ struct web_server::impl {
   void on_ws_close(ws_close_cb_t cb) const {
     settings_->ws_close_cb_ = std::move(cb);
   }
+  void on_ws_upgrade_ok(ws_upgrade_ok_cb_t cb) const {
+    settings_->ws_upgrade_ok_ = std::move(cb);
+  }
 
   void init(std::string const& host, std::string const& port,
             boost::system::error_code& ec) {
@@ -165,6 +168,10 @@ void web_server::on_ws_open(ws_open_cb_t cb) const {
 
 void web_server::on_ws_close(ws_close_cb_t cb) const {
   impl_->on_ws_close(std::move(cb));
+}
+
+void web_server::on_upgrade_ok(ws_upgrade_ok_cb_t cb) const {
+  impl_->on_ws_upgrade_ok(std::move(cb));
 }
 
 }  // namespace net

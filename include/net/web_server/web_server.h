@@ -83,6 +83,7 @@ struct web_server {
   void on_ws_msg(ws_msg_cb_t) const;
   void on_ws_open(ws_open_cb_t) const;
   void on_ws_close(ws_close_cb_t) const;
+  void on_upgrade_ok(ws_upgrade_ok_cb_t) const;
 
   struct impl;
   std::unique_ptr<impl> impl_;

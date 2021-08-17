@@ -162,31 +162,35 @@ struct http_session {
     }
 
     // See if it is a WebSocket Upgrade
-    if (boost::beast::websocket::is_upgrade(parser_->get()) &&
-        (!settings_->ws_upgrade_ok_ ||
-         settings_->ws_upgrade_ok_(parser_->get()))) {
-      // Disable the timeout.
-      // The websocket::stream uses its own timeout settings.
-      boost::beast::get_lowest_layer(derived().stream()).expires_never();
+    if (boost::beast::websocket::is_upgrade(parser_->get())) {
+      if (!settings_->ws_upgrade_ok_ ||
+          settings_->ws_upgrade_ok_(parser_->get())) {
+        // Disable the timeout.
+        // The websocket::stream uses its own timeout settings.
+        boost::beast::get_lowest_layer(derived().stream()).expires_never();
 
-      // Create a websocket session, transferring ownership
-      // of both the socket and the HTTP request.
-      return make_websocket_session(derived().release_stream(),
-                                    parser_->release(), settings_);
-    }
-
-    auto& queue_entry = queue_.add_entry();
-    if (settings_->http_req_cb_) {
-      settings_->http_req_cb_(
-          parser_->release(),
-          [self = derived().shared_from_this(),
-           &queue_entry](web_server::http_res_t&& res) {
-            std::visit(queue_entry, std::move(res));
-          },
-          derived().is_ssl());
+        // Create a websocket session, transferring ownership
+        // of both the socket and the HTTP request.
+        make_websocket_session(derived().release_stream(), parser_->release(),
+                               settings_);
+      } else {
+        queue_.add_entry()(
+            not_found_response(parser_->release(), "No upgrade possible"));
+      }
     } else {
-      queue_entry(
-          not_found_response(parser_->release(), "No handler implemented"));
+      auto& queue_entry = queue_.add_entry();
+      if (settings_->http_req_cb_) {
+        settings_->http_req_cb_(
+            parser_->release(),
+            [self = derived().shared_from_this(),
+             &queue_entry](web_server::http_res_t&& res) {
+              std::visit(queue_entry, std::move(res));
+            },
+            derived().is_ssl());
+      } else {
+        queue_entry(
+            not_found_response(parser_->release(), "No handler implemented"));
+      }
     }
 
     // If we aren't at the queue limit, try to pipeline another request
