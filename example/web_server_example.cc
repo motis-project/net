@@ -146,7 +146,8 @@ int main() {
       });
     }
   });
-  s.on_ws_open([](ws_session_ptr const& s, bool ssl) {
+  s.on_ws_open([](ws_session_ptr const& s, std::string const& target,
+                  bool ssl) {
     if (auto session = s.lock()) {
       std::cout << "session open: " << session.get() << " ssl=" << ssl << "\n";
     }

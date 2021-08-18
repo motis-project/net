@@ -26,6 +26,9 @@ enum class ws_msg_type { TEXT, BINARY };
 struct ws_session {
   using send_cb_t = std::function<void(boost::system::error_code, std::size_t)>;
   virtual void send(std::string msg, ws_msg_type type, send_cb_t cb) = 0;
+  virtual void on_msg(
+      std::function<void(std::string const&, ws_msg_type)>&&) = 0;
+  virtual void on_close(std::function<void()>&&) = 0;
 };
 
 using ws_session_ptr = std::weak_ptr<ws_session>;
@@ -49,8 +52,10 @@ struct web_server {
 
   using ws_msg_cb_t =
       std::function<void(ws_session_ptr, std::string const&, ws_msg_type)>;
-  using ws_open_cb_t = std::function<void(ws_session_ptr, bool)>;
+  using ws_open_cb_t = std::function<void(
+      ws_session_ptr, std::string const& /* target */, bool /* is SSL */)>;
   using ws_close_cb_t = std::function<void(void*)>;
+  using ws_upgrade_ok_cb_t = std::function<bool(http_req_t const&)>;
 
 #if defined(NET_TLS)
   explicit web_server(boost::asio::io_context&, boost::asio::ssl::context&);
@@ -78,6 +83,7 @@ struct web_server {
   void on_ws_msg(ws_msg_cb_t) const;
   void on_ws_open(ws_open_cb_t) const;
   void on_ws_close(ws_close_cb_t) const;
+  void on_upgrade_ok(ws_upgrade_ok_cb_t) const;
 
   struct impl;
   std::unique_ptr<impl> impl_;
