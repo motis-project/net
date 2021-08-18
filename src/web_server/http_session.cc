@@ -171,8 +171,8 @@ struct http_session {
 
         // Create a websocket session, transferring ownership
         // of both the socket and the HTTP request.
-        make_websocket_session(derived().release_stream(), parser_->release(),
-                               settings_);
+        return make_websocket_session(derived().release_stream(),
+                                      parser_->release(), settings_);
       } else {
         queue_.add_entry()(
             not_found_response(parser_->release(), "No upgrade possible"));
