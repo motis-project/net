@@ -106,14 +106,20 @@ bool serve_static_file(beast::string_view doc_root,
     return true;
   }
 
-  auto const& target = req.target();
+  auto const target = [&]() {
+    auto const t = req.target();
+    auto const question_mark_pos = t.find('?');
+    return question_mark_pos == std::string_view ::npos
+               ? t
+               : t.substr(0, question_mark_pos);
+  }();
   if (target.empty() || target[0] != '/' ||
       target.find("..") != beast::string_view::npos) {
     cb(bad_request_response(req, "Invalid target"));
     return true;
   }
 
-  auto path = path_cat(doc_root, req.target());
+  auto path = path_cat(doc_root, target);
   if (target.back() == '/') {
     path.append("index.html");
   }
