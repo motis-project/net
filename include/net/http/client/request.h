@@ -18,6 +18,7 @@ public:
 
   request(std::string const& addr, enum method m = GET, str_map hdr = str_map(),
           std::string body = "");
+  request(char const* s) : request(std::string{s}) {}
 
   std::string to_str() const;
 
