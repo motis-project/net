@@ -1,5 +1,5 @@
-#ifndef NET_HTTP_CLIENT_HTTP_CLIENT_H_
-#define NET_HTTP_CLIENT_HTTP_CLIENT_H_
+#ifndef NET_HTTP_CLIENT_HTTPS_CLIENT_H_
+#define NET_HTTP_CLIENT_HTTPS_CLIENT_H_
 
 #include "net/http/client/client.h"
 #include "net/ssl.h"
@@ -19,4 +19,4 @@ std::shared_ptr<https> make_https(Args&&... args) {
 }  // namespace http
 }  // namespace net
 
-#endif  // NET_HTTP_CLIENT_HTTP_CLIENT_H_
+#endif  // NET_HTTP_CLIENT_HTTPS_CLIENT_H_
