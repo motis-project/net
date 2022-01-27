@@ -30,7 +30,7 @@ template <typename C>
 void basic_http_client<C>::query(request& req, callback cb) {
   if (!req.body.empty()) {
     auto content_length = std::to_string(req.body.length());
-    req.headers.insert(std::make_pair("Content-Length", content_length));
+    req.headers.insert(std::make_pair("content-length", content_length));
   }
 
   request_ = req.to_str();
