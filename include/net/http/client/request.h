@@ -16,9 +16,9 @@ public:
 
   enum method { GET, POST, DEL, PUT, OPTIONS };
 
-  request(std::string const& addr, enum method m = GET, str_map hdr = str_map(),
+  request(url addr, enum method m = GET, str_map hdr = str_map(),
           std::string body = "");
-  request(char const* s) : request(std::string{s}) {}
+  request(char const* s);
 
   std::string to_str() const;
 
