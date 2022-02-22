@@ -8,5 +8,5 @@
   commit=8e7c86d3a0e49101b9a67d74c4a07345dcb0e485
 [boost]
   url=git@github.com:motis-project/boost.git
-  branch=master
-  commit=03a2fc17e1104524da91e3a8a55ca6e09190b4c9
+  branch=boost-1.78.0
+  commit=4859e8d6feec45567b5c0f6ed147fbc580d64cab
