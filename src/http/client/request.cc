@@ -7,8 +7,9 @@ namespace net::http::client {
 static char const* const method_to_string[] = {"GET", "POST", "DELETE", "PUT",
                                                "OPTIONS"};
 
-request::request(url u, enum method m, request::str_map hdr, std::string body)
-    : address(std::move(u)),
+request::request(url addr, enum method m, request::str_map hdr,
+                 std::string body)
+    : address(std::move(addr)),
       req_method(m),
       headers(std::move(hdr)),
       body(std::move(body)) {}
