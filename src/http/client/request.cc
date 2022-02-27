@@ -7,6 +7,10 @@ namespace net::http::client {
 static char const* const method_to_string[] = {"GET", "POST", "DELETE", "PUT",
                                                "OPTIONS"};
 
+char const* method_to_str(enum request::method m) {
+  return method_to_string[m];
+}
+
 request::request(url addr, enum method m, request::str_map hdr,
                  std::string body)
     : address(std::move(addr)),

@@ -28,6 +28,8 @@ public:
   std::string body;
 };
 
+char const* method_to_str(request::method);
+
 }  // namespace client
 }  // namespace http
 }  // namespace net
