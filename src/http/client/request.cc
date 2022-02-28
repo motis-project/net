@@ -18,6 +18,8 @@ request::request(url addr, enum method m, request::str_map hdr,
       headers(std::move(hdr)),
       body(std::move(body)) {}
 
+request::request(std::string const& u) : request{url{u}} {}
+
 request::request(const char* s) : request(std::string{s}) {}
 
 std::string request::to_str() const {
