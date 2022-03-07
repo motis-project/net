@@ -14,13 +14,15 @@ public:
   url(const std::string& url);
   url(char const* address);
 
-  std::string str() const { return str_; }
-  std::string host() const { return host_; }
-  std::string port() const { return port_; }
-  std::string path() const { return path_; }
+  std::string const& str() const { return str_; }
+  std::string const& host() const { return host_; }
+  std::string const& port() const { return port_; }
+  std::string const& path() const { return path_; }
+  std::string const& prot() const { return prot_; }
 
 private:
   std::string str_;
+  std::string prot_;
   std::string host_;
   std::string port_;
   std::string path_;

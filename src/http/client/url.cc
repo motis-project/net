@@ -11,12 +11,6 @@ namespace net::http::client {
 static boost::regex const url_regex(
     "(.*://)([a-zA-Z0-9\\.\\-]+)(:[0-9]*)?(.*)");
 
-url::url(std::string host, std::string port, std::string path)
-    : str_(std::string("http://") + host + ":" + port + path),
-      host_(std::move(host)),
-      port_(std::move(port)),
-      path_(std::move(path)) {}
-
 url::url(std::string const& url) : str_(url) {
   // Extract protocol, port, host address and path from the URL.
   boost::match_results<std::string::const_iterator> what;
@@ -40,6 +34,7 @@ url::url(std::string const& url) : str_(url) {
   }
   port_ = port_.empty() ? prot : port_.substr(1, port_.length() - 1);
   path_ = path_.empty() ? "/" : path_;
+  prot_ = prot;
 }
 
 url::url(char const* address) : url(std::string(address)) {}
