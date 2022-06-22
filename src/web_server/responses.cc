@@ -48,4 +48,18 @@ web_server::empty_res_t empty_response(web_server::http_req_t const& req,
   return res;
 }
 
+web_server::string_res_t moved_response(web_server::http_req_t const& req,
+                                        std::string_view new_location,
+                                        boost::beast::http::status status,
+                                        std::string_view content_type) {
+  web_server::string_res_t res{status, req.version()};
+  res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+  res.set(http::field::content_type, content_type);
+  res.set(http::field::location, new_location);
+  res.keep_alive(req.keep_alive());
+  res.body() = http::obsolete_reason(status);
+  res.prepare_payload();
+  return res;
+}
+
 }  // namespace net
