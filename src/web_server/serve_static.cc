@@ -2,10 +2,13 @@
 
 #include <string_view>
 
+#include "boost/filesystem.hpp"
+
 #include "net/web_server/responses.h"
 
 namespace beast = boost::beast;
 namespace http = boost::beast::http;
+namespace fs = boost::filesystem;
 
 namespace net {
 
@@ -98,6 +101,30 @@ std::string path_cat(beast::string_view base, beast::string_view path) {
   return result;
 }
 
+std::string add_trailing_slash(std::string_view target) {
+  std::string new_target;
+  new_target.reserve(target.size() + 1);
+  auto const question_mark_pos = target.find('?');
+  new_target += target.substr(0, question_mark_pos);
+  new_target += '/';
+  if (question_mark_pos != std::string_view::npos) {
+    new_target += target.substr(question_mark_pos);
+  }
+  return new_target;
+}
+
+bool handle_directory_redirect(std::string const& path,
+                               web_server::http_req_t const& req,
+                               web_server::http_res_cb_t const& cb) {
+  boost::system::error_code sys_ec;
+  auto const file_status = fs::status(fs::path{path}, sys_ec);
+  if (!sys_ec.failed() && fs::is_directory(file_status)) {
+    cb(moved_response(req, add_trailing_slash(req.target())));
+    return true;
+  }
+  return false;
+}
+
 bool serve_static_file(beast::string_view doc_root,
                        web_server::http_req_t const& req,
                        web_server::http_res_cb_t const& cb) {
@@ -109,7 +136,7 @@ bool serve_static_file(beast::string_view doc_root,
   auto const target = [&]() {
     auto const t = req.target();
     auto const question_mark_pos = t.find('?');
-    return question_mark_pos == std::string_view ::npos
+    return question_mark_pos == std::string_view::npos
                ? t
                : t.substr(0, question_mark_pos);
   }();
@@ -122,6 +149,10 @@ bool serve_static_file(beast::string_view doc_root,
   auto path = path_cat(doc_root, target);
   if (target.back() == '/') {
     path.append("index.html");
+  }
+
+  if (handle_directory_redirect(path, req, cb)) {
+    return true;
   }
 
   boost::beast::error_code ec;
