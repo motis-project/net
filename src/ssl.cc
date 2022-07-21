@@ -15,6 +15,16 @@ ssl::ssl(boost::asio::io_service& io_service, std::string host,
       connected_(false) {
   boost::system::error_code ignore;
   ctx_.set_verify_mode(boost::asio::ssl::verify_none, ignore);
+  ctx_.set_options(boost::asio::ssl::context::default_workarounds |
+                   boost::asio::ssl::context::no_sslv2 |
+                   boost::asio::ssl::context::no_sslv3 |
+                   boost::asio::ssl::context::single_dh_use);
+  // https://stackoverflow.com/a/59225060
+  // SSL SNI extension
+  if (!SSL_set_tlsext_host_name(socket_.native_handle(), host_.c_str())) {
+    throw boost::system::system_error{{static_cast<int>(::ERR_get_error()),
+                                       boost::asio::error::get_ssl_category()}};
+  }
 }
 
 ssl::~ssl() {
