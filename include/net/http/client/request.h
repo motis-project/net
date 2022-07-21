@@ -15,7 +15,7 @@ class request {
 public:
   typedef std::map<std::string, std::string> str_map;
 
-  enum method { GET, POST, DEL, PUT, OPTIONS };
+  enum method { GET, POST, DEL, PUT, OPTIONS, CONNECT };
 
   request(url addr, enum method m = GET, str_map hdr = str_map(),
           std::string body = "");

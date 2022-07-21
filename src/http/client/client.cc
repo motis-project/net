@@ -215,10 +215,6 @@ void basic_http_client<C>::read_header() {
 template <typename C>
 void basic_http_client<C>::read_content_length() {
   int l = boost::lexical_cast<int>(header_["content-length"]);
-  // Check parse result: not negativ and <= 2MB
-  if (l < 0 || l >= 0x200000) {
-    throw std::bad_cast();
-  }
   length_ = static_cast<std::size_t>(l);
 }
 

@@ -6,8 +6,8 @@
 
 namespace net::http::client {
 
-static char const* const method_to_string[] = {"GET", "POST", "DELETE", "PUT",
-                                               "OPTIONS"};
+static char const* const method_to_string[] = {"GET", "POST",    "DELETE",
+                                               "PUT", "OPTIONS", "CONNECT"};
 
 char const* method_to_str(enum request::method m) {
   return method_to_string[m];
@@ -31,7 +31,7 @@ bool request::use_https() const {
     return boost::algorithm::starts_with(u.prot(), "https") ||
            u.port() == "443";
   };
-  return (proxy.has_value() && is_https(*proxy)) || is_https(address);
+  return proxy.has_value() ? is_https(*proxy) : is_https(address);
 }
 
 bool request::use_http() const {
