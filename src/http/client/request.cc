@@ -1,5 +1,7 @@
 #include "net/http/client/request.h"
 
+#include "boost/algorithm/string/predicate.hpp"
+
 #include <sstream>
 
 namespace net::http::client {
@@ -22,11 +24,36 @@ request::request(std::string const& u) : request{url{u}} {}
 
 request::request(const char* s) : request(std::string{s}) {}
 
+url request::peer() const { return proxy.has_value() ? *proxy : address; }
+
+bool request::use_https() const {
+  auto const is_https = [](url const& u) {
+    return boost::algorithm::starts_with(u.prot(), "https") ||
+           u.port() == "443";
+  };
+  return (proxy.has_value() && is_https(*proxy)) || is_https(address);
+}
+
+bool request::use_http() const {
+  auto const is_https = [](url const& u) {
+    return u.prot() == "http" || u.port() == "80";
+  };
+  return (proxy.has_value() && is_https(*proxy)) || is_https(address);
+}
+
+request request::set_proxy(url const& u) {
+  auto cpy = *this;
+  if (!u.empty()) {
+    cpy.proxy = u;
+  }
+  return cpy;
+}
+
 std::string request::to_str() const {
   std::stringstream request_stream;
 
   request_stream << method_to_string[static_cast<int>(req_method)];
-  request_stream << " " << address.path();
+  request_stream << " " << (proxy.has_value() ? address.str() : address.path());
   request_stream << " HTTP/1.1\r\n";
   request_stream << "Host: " << address.host() << "\r\n";
 

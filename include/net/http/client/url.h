@@ -10,9 +10,10 @@ namespace client {
 class url {
 public:
   url() = default;
-  url(std::string host, std::string port, std::string path);
   url(const std::string& url);
   url(char const* address);
+
+  bool empty() const { return str_.empty(); }
 
   std::string const& str() const { return str_; }
   std::string const& host() const { return host_; }

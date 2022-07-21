@@ -2,6 +2,7 @@
 #define NET_HTTP_CLIENT_REQUEST_H_
 
 #include <map>
+#include <optional>
 #include <string>
 
 #include "net/http/client/url.h"
@@ -21,8 +22,13 @@ public:
   request(std::string const&);
   request(char const* s);
 
+  bool use_https() const;
+  bool use_http() const;
+  url peer() const;
+  request set_proxy(url const&);
   std::string to_str() const;
 
+  std::optional<url> proxy;
   url address;
   method req_method;
   std::map<std::string, std::string> headers;
