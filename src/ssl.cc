@@ -21,6 +21,7 @@ ssl::ssl(boost::asio::io_service& io_service, std::string host,
                    boost::asio::ssl::context::single_dh_use);
   // https://stackoverflow.com/a/59225060
   // SSL SNI extension
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
   if (!SSL_set_tlsext_host_name(socket_.native_handle(), host_.c_str())) {
     throw boost::system::system_error{{static_cast<int>(::ERR_get_error()),
                                        boost::asio::error::get_ssl_category()}};
