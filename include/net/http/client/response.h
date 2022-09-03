@@ -9,6 +9,7 @@ namespace http {
 namespace client {
 
 struct response {
+  int status_code;
   std::map<std::string, std::string> headers;
   std::string body;
 };

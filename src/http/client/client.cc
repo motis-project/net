@@ -44,7 +44,7 @@ template <typename C>
 void basic_http_client<C>::on_connect(callback cb, std::shared_ptr<C> self,
                                       error_code ec) {
   if (ec) {
-    return cb(self, {std::map<std::string, std::string>(), ""}, ec);
+    return cb(self, {0, std::map<std::string, std::string>(), ""}, ec);
   } else {
     return transfer(self, cb, ec);
   }
@@ -170,14 +170,14 @@ void basic_http_client<C>::respond(callback cb, std::shared_ptr<C> self,
     } catch (const boost::iostreams::gzip_error&) {
       using namespace boost::system;
       error_code ec(errc::illegal_byte_sequence, system_category());
-      return cb(self, {header_, ""}, ec);
+      return cb(self, {status_code_, header_, ""}, ec);
     }
   } else {
     boost::iostreams::copy(s, response);
   }
 
   response_ = {};
-  cb(self, {header_, response.str()}, ec);
+  cb(self, {status_code_, header_, response.str()}, ec);
 }
 
 template <typename C>
