@@ -39,10 +39,10 @@ void query_router::operator()(web_server::http_req_t req,
   auto route = std::find_if(
       std::begin(routes_), std::end(routes_),
       [&match, &req](handler const& route) {
-        auto const target =
-            std::string{req.target().data(), req.target().size()};
         return (route.method_ == "*" || route.method_ == req.method_string()) &&
-               std::regex_match(target.c_str(), match, route.path_);
+               std::regex_match(std::begin(req.target()),
+                                std::begin(req.target()) + req.target().size(),
+                                match, route.path_);
       });
 
   if (route == std::end(routes_)) {
