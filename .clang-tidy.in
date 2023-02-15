@@ -55,8 +55,10 @@ Checks: "*,\
 -cppcoreguidelines-macro-usage,\
 -cert-dcl21-cpp,\
 -modernize-use-trailing-return-type,\
+-altera-struct-pack-align,\
 -fuchsia-default-arguments-calls,\
 -fuchsia-default-arguments-declarations,\
+-readability-identifier-length,\
 -misc-no-recursion"
 WarningsAsErrors: '*'
 HeaderFilterRegex: '^${RELATIVE_SOURCE_DIR}(include/)'
