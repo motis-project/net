@@ -40,8 +40,9 @@ void query_router::operator()(web_server::http_req_t req,
       std::begin(routes_), std::end(routes_),
       [&match, &req](handler const& route) {
         return (route.method_ == "*" || route.method_ == req.method_string()) &&
-               std::regex_match<decltype(req.target())::iterator>(
-                   std::begin(req.target()), std::end(req.target()), match,
+               std::regex_match(
+                   &*std::begin(req.target()),
+                   (&*std::begin(req.target())) + req.target().size(), match,
                    route.path_);
       });
 
