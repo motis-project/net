@@ -18,6 +18,12 @@
 
 namespace net {
 
+template <typename T>
+void reset(T& t) {
+  t.~T();
+  new (&t) T;
+}
+
 // Handles an HTTP server connection.
 // This uses the Curiously Recurring Template Pattern so that
 // the same code works with both SSL streams and regular sockets.
@@ -132,11 +138,11 @@ struct http_session {
 
   void do_read() {
     // Construct a new parser for each message
-    parser_.emplace();
+    reset(parser_);
 
     // Apply a reasonable limit to the allowed size
     // of the body in bytes to prevent abuse.
-    parser_->body_limit(settings_->request_body_limit_);
+    parser_.body_limit(settings_->request_body_limit_);
 
     // Set the timeout.
     boost::beast::get_lowest_layer(derived().stream())
@@ -144,7 +150,7 @@ struct http_session {
 
     // Read a request using the parser-oriented interface
     boost::beast::http::async_read(
-        derived().stream(), buffer_, *parser_,
+        derived().stream(), buffer_, parser_,
         boost::beast::bind_front_handler(&http_session::on_read,
                                          derived().shared_from_this()));
   }
@@ -162,9 +168,9 @@ struct http_session {
     }
 
     // See if it is a WebSocket Upgrade
-    if (boost::beast::websocket::is_upgrade(parser_->get())) {
+    if (boost::beast::websocket::is_upgrade(parser_.get())) {
       if (!settings_->ws_upgrade_ok_ ||
-          settings_->ws_upgrade_ok_(parser_->get())) {
+          settings_->ws_upgrade_ok_(parser_.get())) {
         // Disable the timeout.
         // The websocket::stream uses its own timeout settings.
         boost::beast::get_lowest_layer(derived().stream()).expires_never();
@@ -172,16 +178,16 @@ struct http_session {
         // Create a websocket session, transferring ownership
         // of both the socket and the HTTP request.
         return make_websocket_session(derived().release_stream(),
-                                      parser_->release(), settings_);
+                                      parser_.release(), settings_);
       } else {
         queue_.add_entry()(
-            not_found_response(parser_->release(), "No upgrade possible"));
+            not_found_response(parser_.release(), "No upgrade possible"));
       }
     } else {
       auto& queue_entry = queue_.add_entry();
       if (settings_->http_req_cb_) {
         settings_->http_req_cb_(
-            parser_->release(),
+            parser_.release(),
             [self = derived().shared_from_this(),
              &queue_entry](web_server::http_res_t&& res) {
               std::visit(queue_entry, std::move(res));
@@ -189,7 +195,7 @@ struct http_session {
             derived().is_ssl());
       } else {
         queue_entry(
-            not_found_response(parser_->release(), "No handler implemented"));
+            not_found_response(parser_.release(), "No handler implemented"));
       }
     }
 
@@ -233,11 +239,7 @@ struct http_session {
 
   boost::beast::flat_buffer buffer_;
 
-  // The parser is stored in an optional container so we can
-  // construct it from scratch it at the beginning of each new message.
-  std::optional<
-      boost::beast::http::request_parser<boost::beast::http::string_body>>
-      parser_;
+  boost::beast::http::request_parser<boost::beast::http::string_body> parser_;
 
   web_server_settings_ptr settings_;
 };
