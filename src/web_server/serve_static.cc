@@ -5,6 +5,7 @@
 #include "boost/filesystem.hpp"
 
 #include "net/web_server/responses.h"
+#include "net/web_server/url_decode.h"
 
 namespace beast = boost::beast;
 namespace http = boost::beast::http;
@@ -151,13 +152,20 @@ bool serve_static_file(beast::string_view doc_root,
     path.append("index.html");
   }
 
-  if (handle_directory_redirect(path, req, cb)) {
+  std::string decoded;
+  auto const success = url_decode(path, decoded);
+
+  if (!success) {
+    return false;
+  }
+
+  if (handle_directory_redirect(decoded, req, cb)) {
     return true;
   }
 
   boost::beast::error_code ec;
   http::file_body::value_type body;
-  body.open(path.c_str(), beast::file_mode::scan, ec);
+  body.open(decoded.c_str(), beast::file_mode::scan, ec);
 
   if (ec == beast::errc::no_such_file_or_directory) {
     return false;
@@ -167,7 +175,7 @@ bool serve_static_file(beast::string_view doc_root,
   }
 
   auto const size = body.size();
-  auto const content_type = mime_type(path);
+  auto const content_type = mime_type(decoded);
 
   if (req.method() == http::verb::head) {
     auto res = empty_response(req, http::status::ok, content_type);

@@ -52,11 +52,18 @@ Checks: "*,\
 -cert-msc32-c,\
 -cert-msc51-cpp,\
 -bugprone-exception-escape,\
+-bugprone-easily-swappable-parameters,\
 -cppcoreguidelines-macro-usage,\
 -cert-dcl21-cpp,\
 -modernize-use-trailing-return-type,\
+-altera-struct-pack-align,\
+-altera-id-dependent-backward-branch,\
+-altera-unroll-loops,\
 -fuchsia-default-arguments-calls,\
 -fuchsia-default-arguments-declarations,\
+-readability-identifier-length,\
+-readability-function-cognitive-complexity,\
+-readability-avoid-const-params-in-decls,\
 -misc-no-recursion"
 WarningsAsErrors: '*'
 HeaderFilterRegex: '^${RELATIVE_SOURCE_DIR}(include/)'

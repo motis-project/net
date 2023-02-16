@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <queue>
-#include <string>
 #include <utility>
 
 #include "boost/beast/core/buffers_to_string.hpp"
@@ -21,7 +20,7 @@ struct websocket_session : public ws_session {
   explicit websocket_session(web_server_settings_ptr settings)
       : settings_(std::move(settings)) {}
 
-  ~websocket_session() {
+  virtual ~websocket_session() {
     if (on_close_) {
       on_close_();
     } else if (settings_->ws_close_cb_) {
@@ -145,7 +144,7 @@ private:
     }
 
     std::string msg;
-    ws_msg_type type;
+    ws_msg_type type;  // NOLINT
     send_cb_t cb;
     std::tie(msg, type, cb) = send_queue_.front();
     send_queue_.pop();

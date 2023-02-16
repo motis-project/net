@@ -52,11 +52,12 @@ void basic_http_client<C>::on_connect(callback cb, std::shared_ptr<C> self,
 
 template <typename C>
 std::streamsize basic_http_client<C>::read(char_type* s, std::streamsize n) {
-  std::size_t ret = std::min(static_cast<std::size_t>(n), response_.size());
+  std::size_t const ret =
+      std::min(static_cast<std::size_t>(n), response_.size());
   if (ret != 0) {
-    std::memcpy(s, &(response_[0]), ret);
+    std::memcpy(s, response_.data(), ret);
     if (response_.size() != ret) {
-      std::memmove(&(response_[0]), &(response_[ret]), response_.size() - ret);
+      std::memmove(response_.data(), &(response_[ret]), response_.size() - ret);
     }
     response_.resize(response_.size() - ret);
   }
@@ -100,7 +101,7 @@ void basic_http_client<C>::transfer(std::shared_ptr<C> self, callback cb,
           read_content_length();
         } catch (std::bad_cast const&) {
           using namespace boost::system;
-          error_code ec(errc::illegal_byte_sequence, system_category());
+          error_code const ec(errc::illegal_byte_sequence, system_category());
           return respond(cb, self, ec);
         }
         response_.resize(length_);
@@ -169,7 +170,7 @@ void basic_http_client<C>::respond(callback cb, std::shared_ptr<C> self,
       boost::iostreams::copy(filter, response);
     } catch (const boost::iostreams::gzip_error&) {
       using namespace boost::system;
-      error_code ec(errc::illegal_byte_sequence, system_category());
+      error_code const ec(errc::illegal_byte_sequence, system_category());
       return cb(self, {status_code_, header_, ""}, ec);
     }
   } else {
@@ -190,7 +191,7 @@ void basic_http_client<C>::read_header() {
   std::string header;
   while (std::getline(response_stream_, header) && header != "\r") {
     header = header.substr(0, header.length() - 1);
-    std::size_t seperator_pos = header.find(": ");
+    std::size_t const seperator_pos = header.find(": ");
     if (seperator_pos == std::string::npos) {
       continue;
     }
@@ -199,10 +200,10 @@ void basic_http_client<C>::read_header() {
     std::string key_to_lower;
     key_to_lower.resize(key.size());
     std::transform(key.begin(), key.end(), key_to_lower.begin(), ::tolower);
-    std::string header_value = header.substr(seperator_pos + 2);
+    std::string const header_value = header.substr(seperator_pos + 2);
 
     if (key_to_lower == "set-cookie") {
-      std::size_t val_end_pos = header_value.find(';');
+      std::size_t const val_end_pos = header_value.find(';');
       if (val_end_pos != std::string::npos) {
         header_["set-cookie"] += header_value.substr(0, val_end_pos + 1);
       }
@@ -214,15 +215,15 @@ void basic_http_client<C>::read_header() {
 
 template <typename C>
 void basic_http_client<C>::read_content_length() {
-  int l = boost::lexical_cast<int>(header_["content-length"]);
-  length_ = static_cast<std::size_t>(l);
+  int const length = boost::lexical_cast<int>(header_["content-length"]);
+  length_ = static_cast<std::size_t>(length);
 }
 
 template <typename C>
 std::size_t basic_http_client<C>::copy_content(std::size_t buffer_size) {
   if (buffer_size > 0) {
     const char* buf = boost::asio::buffer_cast<const char*>(buf_.data());
-    std::size_t original = response_.size();
+    std::size_t const original = response_.size();
     response_.resize(response_.size() + buffer_size);
     std::memcpy(&(response_[original]), buf, buffer_size);
     buf_.consume(buffer_size);
