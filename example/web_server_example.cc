@@ -164,7 +164,7 @@ int main() {
     std::cout << "init error: " << ec.message() << "\n";
     return 1;
   }
-  stop_handler stop(ioc, [&]() {
+  stop_handler const stop(ioc, [&]() {
     s.stop();
     ioc.stop();
   });

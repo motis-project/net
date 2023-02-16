@@ -20,7 +20,7 @@ namespace net {
 
 // From http://stackoverflow.com/a/10973348
 std::string decode_base64(std::string base64) {
-  unsigned int padding = count(base64.begin(), base64.end(), '=');
+  unsigned int const padding = count(base64.begin(), base64.end(), '=');
 
   // replace '=' by base64 encoding of '\0'
   std::replace(base64.begin(), base64.end(), '=', 'A');

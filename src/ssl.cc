@@ -59,7 +59,7 @@ void ssl::connect(ssl_ptr self, connect_cb cb) {
 }
 
 void ssl::resolve(ssl_ptr self, connect_cb cb) {
-  boost::asio::ip::tcp::resolver::query query(host_, port_);
+  boost::asio::ip::tcp::resolver::query const query(host_, port_);
   return resolver_.async_resolve(
       query, [self = std::move(self), cb = std::move(cb)](
                  boost::system::error_code const& ec,

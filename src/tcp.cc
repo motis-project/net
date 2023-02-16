@@ -55,8 +55,9 @@ void tcp::connect(tcp_ptr self, connect_cb cb) {
 }
 
 void tcp::resolve(tcp_ptr self, connect_cb cb) {
-  asio::ip::tcp::resolver::query query(asio::ip::tcp::v4(), host_, port_,
-                                       asio::ip::resolver_query_base::flags());
+  asio::ip::tcp::resolver::query const query(
+      asio::ip::tcp::v4(), host_, port_,
+      asio::ip::resolver_query_base::flags());
   return resolver_.async_resolve(
       query, [self = std::move(self), cb = std::move(cb)](
                  boost::system::error_code ec,

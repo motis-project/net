@@ -1,10 +1,8 @@
 #include "net/web_server/query_router.h"
 
-#include <numeric>
 #include <utility>
 
 #include "boost/algorithm/string/predicate.hpp"
-#include "boost/lexical_cast.hpp"
 
 #include "net/base64.h"
 #include "net/web_server/enable_cors.h"
@@ -105,7 +103,7 @@ void query_router::set_credentials(route_request& req) {
     auto const credentials =
         decode_base64(std::string{auth.data(), auth.size()});
 
-    size_t split = credentials.find_first_of(':');
+    std::size_t const split = credentials.find_first_of(':');
     if (split == std::string::npos) {
       return;
     }

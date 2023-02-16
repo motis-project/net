@@ -1,8 +1,6 @@
 #include "net/http/client/url.h"
 
-#include <iostream>
 #include <stdexcept>
-#include <utility>
 
 #include "boost/regex.hpp"
 
@@ -14,7 +12,7 @@ static boost::regex const url_regex(
 url::url(std::string const& url) : str_(url) {
   // Extract protocol, port, host address and path from the URL.
   boost::match_results<std::string::const_iterator> what;
-  bool matches = boost::regex_search(url, what, url_regex);
+  bool const matches = boost::regex_search(url, what, url_regex);
 
   // Throw invalid_argument exception if the regular expression didn't match.
   if (!matches) {
