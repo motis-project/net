@@ -1,15 +1,14 @@
 #include "net/web_server/serve_static.h"
 
 #include <string_view>
-
-#include "boost/filesystem.hpp"
+#include <filesystem>
 
 #include "net/web_server/responses.h"
 #include "net/web_server/url_decode.h"
 
 namespace beast = boost::beast;
 namespace http = boost::beast::http;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace net {
 
