@@ -2,6 +2,8 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <locale>
+#include <sstream>
 
 #include "boost/beast/http/rfc7230.hpp"
 
@@ -21,8 +23,12 @@ http_content_encoding select_content_encoding(
             std::find_if(params.begin(), params.end(),
                          [](auto const& param) { return param.first == "q"; });
         it != params.end() && !it->second.empty()) {
-      std::string val = it->second;
-      return std::strtod(val.data(), nullptr) != 0.0;
+      std::stringstream str;
+      str.imbue(std::locale::classic());
+      double val;
+      str << it->second;
+      str >> val;
+      return val != 0.0;
     }
     return true;
   };
