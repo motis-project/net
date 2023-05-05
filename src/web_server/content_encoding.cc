@@ -1,6 +1,7 @@
 #include "net/web_server/content_encoding.h"
 
 #include <cstdlib>
+#include <algorithm>
 
 #include "boost/beast/http/rfc7230.hpp"
 
@@ -16,14 +17,12 @@ namespace net {
 http_content_encoding select_content_encoding(
     boost::beast::string_view const accept_encoding) {
   auto const is_acceptable = [](http::param_list const& params) {
-    for (auto const& param : params) {
-      if (param.first == "q" && !param.second.empty()) {
-        std::string q = param.second;
-        auto const value = std::strtod(q.data(), nullptr);
-        if (value == 0.0) {
-          return false;
-        }
-      }
+    if (auto const it =
+            std::find_if(params.begin(), params.end(),
+                         [](auto const& param) { return param.first == "q"; });
+        it != params.end() && !it->second.empty()) {
+      std::string val = it->second;
+      return std::strtod(val.data(), nullptr) != 0.0;
     }
     return true;
   };
