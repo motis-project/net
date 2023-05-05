@@ -2,6 +2,8 @@
 
 #include "boost/beast/version.hpp"
 
+#include "net/web_server/content_encoding.h"
+
 namespace http = boost::beast::http;
 
 namespace net {
@@ -14,7 +16,7 @@ web_server::string_res_t string_response(web_server::http_req_t const& req,
   res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
   res.set(http::field::content_type, content_type);
   res.keep_alive(req.keep_alive());
-  res.body() = std::string(text);
+  set_response_body(res, req, text);
   res.prepare_payload();
   return res;
 }

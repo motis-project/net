@@ -17,7 +17,11 @@ endif()
 file(GLOB_RECURSE web-server-src src/web_server/*.cc)
 add_library(web-server ${web-server-src} src/base64.cc)
 target_compile_features(web-server PUBLIC cxx_std_17)
-target_link_libraries(web-server ${CMAKE_THREAD_LIBS_INIT} boost)
+target_link_libraries(web-server
+  ${CMAKE_THREAD_LIBS_INIT}
+  boost
+  boost-iostreams
+)
 target_include_directories(web-server SYSTEM PUBLIC include)
 if(MSVC)
   set_target_properties(web-server PROPERTIES COMPILE_FLAGS "/bigobj")
@@ -29,6 +33,7 @@ target_compile_features(web-server-tls PUBLIC cxx_std_17)
 target_link_libraries(web-server-tls
   ${CMAKE_THREAD_LIBS_INIT}
   boost
+  boost-iostreams
   ssl
   crypto
 )

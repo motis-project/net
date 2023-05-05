@@ -11,7 +11,7 @@
 
 #if defined(NET_TLS)
 #include "boost/asio/ssl/context.hpp"
-#endif()
+#endif
 
 #include "boost/beast/http/buffer_body.hpp"
 #include "boost/beast/http/empty_body.hpp"
