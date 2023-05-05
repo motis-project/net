@@ -19,7 +19,7 @@ http_content_encoding select_content_encoding(
     for (auto const& param : params) {
       if (param.first == "q" && !param.second.empty()) {
         std::string q = param.second;
-        auto const value = std::atof(q.data());
+        auto const value = std::strtod(q.data(), nullptr);
         if (value == 0.0) {
           return false;
         }
