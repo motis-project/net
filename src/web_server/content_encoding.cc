@@ -25,7 +25,7 @@ http_content_encoding select_content_encoding(
         it != params.end() && !it->second.empty()) {
       std::stringstream str;
       str.imbue(std::locale::classic());
-      double val;
+      auto val = 0.0;
       str << it->second;
       str >> val;
       return val != 0.0;
