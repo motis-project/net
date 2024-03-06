@@ -78,6 +78,7 @@ jobs:
         uses: ./.github/actions/install-llvm
         with:
           version: 15
+          packages: libc++-15-dev libc++abi-15-dev clang-tidy-15
 
       # ==== BUILD ====
       - name: CMake
