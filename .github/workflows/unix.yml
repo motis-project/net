@@ -11,17 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install clang-format
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 15
-          rm llvm.sh
-          sudo apt-get install -y --no-install-recommends clang-format-15
+        uses: ./.github/actions/install-llvm
+        with:
+          version: 15
+          packages: clang-format-15
 
       - name: Format files
         run: find src include example -type f -a \( -name "*.cc" -o -name "*.h" \) -print0 | xargs -0 clang-format-15 -i
@@ -44,15 +40,15 @@ jobs:
             cxxflags: -stdlib=libc++
             os: macos-latest
             artifact: macos
-          - name: GCC 10 Release
-            cxx: g++-10
-            cc: gcc-10
+          - name: GCC 12 Release
+            cxx: g++-12
+            cc: gcc-12
             mode: Release
             os: ubuntu-latest
             artifact: linux
-          - name: GCC 10 Debug
-            cxx: g++-10
-            cc: gcc-10
+          - name: GCC 12 Debug
+            cxx: g++-12
+            cc: gcc-12
             mode: Debug
             os: ubuntu-latest
           - name: Clang 15 Release
@@ -73,20 +69,16 @@ jobs:
     env:
       UBSAN_OPTIONS: halt_on_error=1:abort_on_error=1
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: seanmiddleditch/gha-setup-ninja@master
 
       # ==== INSTALL ====
       - name: Install LLVM
         if: matrix.config.os != 'macos-latest' && matrix.config.cc == 'clang-15'
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 15
-          rm llvm.sh
-          sudo apt-get install -y --no-install-recommends libc++-15-dev libc++abi-15-dev clang-tidy-15
+        uses: ./.github/actions/install-llvm
+        with:
+          version: 15
+          packages: libc++-15-dev libc++abi-15-dev clang-tidy-15
 
       # ==== BUILD ====
       - name: CMake
@@ -97,11 +89,13 @@ jobs:
           -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
           -DCMAKE_C_FLAGS="${{ matrix.config.cflags }}" \
           -DCMAKE_CXX_FLAGS="${{ matrix.config.cxxflags }}" \
-          -DCMAKE_CXX_FLAGS_DEBUG="" \
-          -DCMAKE_CXX_LINKER_FLAGS=${{ matrix.config.ldflags }}" \
-          -DCMAKE_CXX_EXE_LINKER_FLAGS="${{ matrix.config.ldflags }} \
+          -DCMAKE_EXE_LINKER_FLAGS="${{ matrix.config.ldflags }}" \
           -DCMAKE_BUILD_TYPE=${{ matrix.config.mode }} \
-          -DNET_LINT=${{ matrix.config.lint }}
+          -DNET_LINT=${{ matrix.config.lint }} \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Show compile_commands.json
+        run: cat build/compile_commands.json
 
       - name: Build
         run: cmake --build build --target http-client net-web_server-sample net-wss_client-sample

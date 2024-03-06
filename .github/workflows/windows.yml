@@ -15,7 +15,7 @@ jobs:
         mode: [Debug, Release]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: seanmiddleditch/gha-setup-ninja@master
 
       - name: CMake
