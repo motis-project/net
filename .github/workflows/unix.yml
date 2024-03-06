@@ -16,11 +16,11 @@ jobs:
       - name: Install clang-format
         uses: ./.github/actions/install-llvm
         with:
-          version: 16
-          packages: clang-format-16
+          version: 15
+          packages: clang-format-15
 
       - name: Format files
-        run: find src include example -type f -a \( -name "*.cc" -o -name "*.h" \) -print0 | xargs -0 clang-format-16 -i
+        run: find src include example -type f -a \( -name "*.cc" -o -name "*.h" \) -print0 | xargs -0 clang-format-15 -i
 
       - name: Check for differences
         run: |
@@ -51,16 +51,16 @@ jobs:
             cc: gcc-10
             mode: Debug
             os: ubuntu-latest
-          - name: Clang 16 Release
-            cxx: clang++-16
-            cc: clang-16
+          - name: Clang 15 Release
+            cxx: clang++-15
+            cc: clang-15
             mode: Release
             cxxflags: -stdlib=libc++
             ldflags: -lc++abi
             os: ubuntu-latest
           - name: Clang Tidy
-            cxx: clang++-16
-            cc: clang-16
+            cxx: clang++-15
+            cc: clang-15
             mode: Debug
             cxxflags: -stdlib=libc++
             ldflags: -lc++abi
@@ -74,10 +74,10 @@ jobs:
 
       # ==== INSTALL ====
       - name: Install LLVM
-        if: matrix.config.os != 'macos-latest' && matrix.config.cc == 'clang-16'
+        if: matrix.config.os != 'macos-latest' && matrix.config.cc == 'clang-15'
         uses: ./.github/actions/install-llvm
         with:
-          version: 16
+          version: 15
 
       # ==== BUILD ====
       - name: CMake
