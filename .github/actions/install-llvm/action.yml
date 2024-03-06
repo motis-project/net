@@ -1,12 +1,12 @@
-name: 'Install LLVM'
-description: 'Install LLVM'
+name: "Install LLVM"
+description: "Install LLVM"
 inputs:
   version:
-    description: 'LLVM version'
+    description: "LLVM version"
     required: false
-    default: 16
+    default: "17"
   packages:
-    description: 'Packages to install'
+    description: "Packages to install"
     required: false
     default: >
       clang-VERSION
@@ -20,7 +20,7 @@ inputs:
       libunwind-VERSION-dev
 outputs:
   version:
-    description: 'LLVM version'
+    description: "LLVM version"
     value: ${{ inputs.version }}
 runs:
   using: "composite"
