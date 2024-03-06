@@ -91,7 +91,11 @@ jobs:
           -DCMAKE_CXX_FLAGS_DEBUG="" \
           -DCMAKE_EXE_LINKER_FLAGS="${{ matrix.config.ldflags }}" \
           -DCMAKE_BUILD_TYPE=${{ matrix.config.mode }} \
-          -DNET_LINT=${{ matrix.config.lint }}
+          -DNET_LINT=${{ matrix.config.lint }} \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Show compile_commands.json
+        run: cat build/compile_commands.json
 
       - name: Build
         run: cmake --build build --target http-client net-web_server-sample net-wss_client-sample
