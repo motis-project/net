@@ -28,11 +28,6 @@ basic_http_client<C>::basic_http_client(
 
 template <typename C>
 void basic_http_client<C>::query(request& req, callback cb) {
-  if (!req.body.empty()) {
-    auto content_length = std::to_string(req.body.length());
-    req.headers.insert(std::make_pair("content-length", content_length));
-  }
-
   request_ = req.to_str();
 
   static_cast<C*>(this)->connect([this, cb](auto&& v1, auto&& v2) {
