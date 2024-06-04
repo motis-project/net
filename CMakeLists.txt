@@ -16,7 +16,7 @@ endif()
 
 file(GLOB_RECURSE web-server-src src/web_server/*.cc)
 add_library(web-server ${web-server-src} src/base64.cc)
-target_compile_features(web-server PUBLIC cxx_std_17)
+target_compile_features(web-server PUBLIC cxx_std_23)
 target_link_libraries(web-server
   ${CMAKE_THREAD_LIBS_INIT}
   boost

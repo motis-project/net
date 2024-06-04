@@ -1,32 +1,101 @@
 #pragma once
 
+#include <filesystem>
+#include <iostream>
 #include <regex>
 #include <string>
 #include <vector>
+
+#include "boost/beast/http/status.hpp"
+#include "boost/json/parse.hpp"
+#include "boost/json/serialize.hpp"
+#include "boost/json/value.hpp"
 
 #include "net/web_server/web_server.h"
 
 namespace net {
 
-struct query_router {
-  using request = web_server::http_req_t;
-  using reply = web_server::http_res_t;
+using request = web_server::http_req_t;
+using reply = web_server::http_res_t;
 
-  struct route_request : public web_server::http_req_t {
-    route_request(request req) : web_server::http_req_t(req) {}
-    std::vector<std::string> path_params_;
-    std::string username_, password_;
-  };
+struct route_request : public web_server::http_req_t {
+  route_request(request req) : web_server::http_req_t(req) {}
+  std::vector<std::string> path_params_;
+  std::string username_, password_;
+};
+
+template <typename Fn>
+concept StringRouteHandler = requires(route_request const& req, Fn f) {
+  { f(req) } -> std::convertible_to<std::string>;
+};
+
+template <typename Fn>
+concept JsonRouteHandler = requires(boost::json::value const& req, Fn f) {
+  { f(req) } -> std::convertible_to<boost::json::value>;
+};
+
+struct query_router {
 
   using route_request_handler = std::function<void(
       route_request const&, web_server::http_res_cb_t, bool)>;
 
   query_router& route(std::string method, std::string const& path_regex,
                       route_request_handler handler);
+
+  template <StringRouteHandler Fn>
+  query_router& route(std::string method, std::string const& path_regex,
+                      Fn&& fn) {
+    return route(std::move(method), path_regex,
+                 [fn = std::forward<Fn>(fn)](
+                     web_server::http_req_t req,
+                     web_server::http_res_cb_t const& cb, bool is_ssl) {
+                   try {
+                     auto res = net::web_server::string_res_t{
+                         boost::beast::http::status::ok, req.version()};
+                     res.body() = fn(req);
+                     res.keep_alive(req.keep_alive());
+                     cb(res);
+                   } catch (std::exception const& e) {
+                     std::cout << "exception: " << e.what() << "\n";
+                     auto res = net::web_server::empty_res_t{
+                         boost::beast::http::status::internal_server_error,
+                         req.version()};
+                     res.keep_alive(req.keep_alive());
+                     cb(res);
+                   }
+                 });
+  }
+
+  template <JsonRouteHandler Fn>
+  query_router& route(std::string method, std::string const& path_regex,
+                      Fn&& fn) {
+    return route(std::move(method), path_regex,
+                 [fn = std::forward<Fn>(fn)](
+                     web_server::http_req_t req,
+                     web_server::http_res_cb_t const& cb, bool is_ssl) {
+                   try {
+                     auto res = net::web_server::string_res_t{
+                         boost::beast::http::status::ok, req.version()};
+                     res.body() = boost::json::serialize(
+                         fn(boost::json::parse(req.body())));
+                     res.keep_alive(req.keep_alive());
+                     cb(res);
+                   } catch (std::exception const& e) {
+                     std::cout << "exception: " << e.what() << "\n";
+                     auto res = net::web_server::empty_res_t{
+                         boost::beast::http::status::internal_server_error,
+                         req.version()};
+                     res.keep_alive(req.keep_alive());
+                     cb(res);
+                   }
+                 });
+  }
+
   void operator()(web_server::http_req_t, web_server::http_res_cb_t const&,
                   bool);
   void reply_hook(std::function<void(web_server::http_res_t&)> reply_hook);
   void enable_cors();
+  void serve_files(std::filesystem::path const&);
 
 private:
   struct handler {

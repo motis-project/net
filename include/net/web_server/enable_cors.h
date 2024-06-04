@@ -10,8 +10,7 @@ void enable_cors(Response& res) {
   std::visit(
       [](auto& v) {
         v.base().set(field::access_control_allow_origin, "*");
-        v.base().set(field::access_control_allow_headers,
-                     "X-Requested-With, Content-Type, Accept, Authorization");
+        v.base().set(field::access_control_allow_headers, "*");
         v.base().set(field::access_control_allow_methods, "GET, POST, OPTIONS");
       },
       res);

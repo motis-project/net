@@ -1,5 +1,6 @@
 #include "net/web_server/query_router.h"
 
+#include <net/web_server/serve_static.h>
 #include <utility>
 
 #include "boost/algorithm/string/predicate.hpp"
@@ -26,8 +27,23 @@ void query_router::reply_hook(std::function<void(reply&)> reply_hook) {
 void query_router::enable_cors() {
   reply_hook([](reply& rep) { net::enable_cors(rep); });
   route("OPTIONS", ".*",
-        [](route_request const& req, const web_server::http_res_cb_t& cb,
+        [](route_request const& req, web_server::http_res_cb_t const& cb,
            bool) { return cb(empty_response(req)); });
+}
+
+void query_router::serve_files(std::filesystem::path const& p) {
+  route(
+      "GET", ".*",
+      [p](route_request const& req, web_server::http_res_cb_t const& cb, bool) {
+        if (serve_static_file(p.generic_string(), req, cb)) {
+          return;
+        } else {
+          namespace http = boost::beast::http;
+          cb(net::web_server::string_res_t{http::status::not_found,
+                                           req.version()});
+          return;
+        }
+      });
 }
 
 void query_router::operator()(web_server::http_req_t req,
