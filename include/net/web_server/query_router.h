@@ -25,7 +25,7 @@ struct route_request : public web_server::http_req_t {
 };
 
 template <typename Fn>
-concept StringRouteHandler = requires(route_request const& req, Fn f) {
+concept StringRouteHandler = requires(std::string_view const& req, Fn f) {
   { f(req) } -> std::convertible_to<std::string>;
 };
 
@@ -52,7 +52,7 @@ struct query_router {
                    try {
                      auto res = net::web_server::string_res_t{
                          boost::beast::http::status::ok, req.version()};
-                     res.body() = fn(req);
+                     res.body() = fn(req.body());
                      res.keep_alive(req.keep_alive());
                      cb(res);
                    } catch (std::exception const& e) {
