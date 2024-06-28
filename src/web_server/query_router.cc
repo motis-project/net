@@ -4,11 +4,14 @@
 #include <utility>
 
 #include "boost/algorithm/string/predicate.hpp"
+#include "boost/url.hpp"
 
 #include "net/base64.h"
 #include "net/web_server/enable_cors.h"
 #include "net/web_server/responses.h"
 #include "net/web_server/url_decode.h"
+
+namespace url = boost::urls;
 
 namespace net {
 
@@ -49,18 +52,18 @@ void query_router::serve_files(std::filesystem::path const& p) {
 void query_router::operator()(web_server::http_req_t req,
                               web_server::http_res_cb_t const& cb,
                               bool is_ssl) {
-  std::cmatch match;
-  auto route = std::find_if(
-      std::begin(routes_), std::end(routes_),
-      [&match, &req](handler const& route) {
-        return (route.method_ == "*" || route.method_ == req.method_string()) &&
-               std::regex_match(
-                   &*std::begin(req.target()),
-                   (&*std::begin(req.target())) + req.target().size(), match,
-                   route.path_);
+  auto const url = url::url_view{req.target()};
+  auto const path = url.path();
+
+  auto match = std::cmatch{};
+  auto route =
+      std::find_if(begin(routes_), end(routes_), [&](handler const& h) {
+        return (h.method_ == "*" || h.method_ == req.method_string()) &&
+               std::regex_match(path.c_str(), path.c_str() + path.size(), match,
+                                h.path_);
       });
 
-  if (route == std::end(routes_)) {
+  if (route == end(routes_)) {
     auto rep = reply{not_found_response(req)};
     if (reply_hook_) {
       reply_hook_(rep);
@@ -68,7 +71,7 @@ void query_router::operator()(web_server::http_req_t req,
     return cb(std::move(rep));
   }
 
-  route_request route_req(req);
+  route_request route_req(req, url);
   for (unsigned i = 1; i < match.size(); ++i) {
     route_req.path_params_.push_back(match[i]);
   }
