@@ -7,11 +7,11 @@
 #include <vector>
 
 #include "boost/beast/http/status.hpp"
-#include "boost/json/parse.hpp"
-#include "boost/json/serialize.hpp"
-#include "boost/json/value.hpp"
+#include "boost/json.hpp"
 
 #include "net/web_server/web_server.h"
+
+#include "utl/overloaded.h"
 
 namespace net {
 
@@ -24,18 +24,25 @@ struct route_request : public web_server::http_req_t {
   std::string username_, password_;
 };
 
+template <typename T>
+concept JSON = boost::json::has_value_to<T>::value &&
+               boost::json::has_value_from<T>::value;
+
 template <typename Fn>
 concept StringRouteHandler = requires(std::string_view const& req, Fn f) {
   { f(req) } -> std::convertible_to<std::string>;
 };
 
 template <typename Fn>
-concept JsonRouteHandler = requires(boost::json::value const& req, Fn f) {
-  { f(req) } -> std::convertible_to<boost::json::value>;
-};
+concept Function = std::is_function_v<Fn>;
+
+template <typename Fn>
+concept JsonRouteHandler =
+    requires(Fn f, typename utl::first_argument<Fn> arg) {
+      { f(arg) } -> JSON;
+    };
 
 struct query_router {
-
   using route_request_handler = std::function<void(
       route_request const&, web_server::http_res_cb_t, bool)>;
 
@@ -69,26 +76,28 @@ struct query_router {
   template <JsonRouteHandler Fn>
   query_router& route(std::string method, std::string const& path_regex,
                       Fn&& fn) {
-    return route(std::move(method), path_regex,
-                 [fn = std::forward<Fn>(fn)](
-                     web_server::http_req_t req,
-                     web_server::http_res_cb_t const& cb, bool is_ssl) {
-                   try {
-                     auto res = net::web_server::string_res_t{
-                         boost::beast::http::status::ok, req.version()};
-                     res.body() = boost::json::serialize(
-                         fn(boost::json::parse(req.body())));
-                     res.keep_alive(req.keep_alive());
-                     cb(res);
-                   } catch (std::exception const& e) {
-                     std::cout << "exception: " << e.what() << "\n";
-                     auto res = net::web_server::empty_res_t{
-                         boost::beast::http::status::internal_server_error,
-                         req.version()};
-                     res.keep_alive(req.keep_alive());
-                     cb(res);
-                   }
-                 });
+    return route(
+        std::move(method), path_regex,
+        [fn = std::forward<Fn>(fn)](web_server::http_req_t req,
+                                    web_server::http_res_cb_t const& cb,
+                                    bool is_ssl) {
+          try {
+            auto res = net::web_server::string_res_t{
+                boost::beast::http::status::ok, req.version()};
+            res.body() = boost::json::serialize(boost::json::value_from(
+                fn(boost::json::value_to<std::decay_t<utl::first_argument<Fn>>>(
+                    boost::json::parse(req.body())))));
+            res.keep_alive(req.keep_alive());
+            cb(res);
+          } catch (std::exception const& e) {
+            std::cout << "exception: " << e.what() << "\n";
+            auto res = net::web_server::empty_res_t{
+                boost::beast::http::status::internal_server_error,
+                req.version()};
+            res.keep_alive(req.keep_alive());
+            cb(res);
+          }
+        });
   }
 
   void operator()(web_server::http_req_t, web_server::http_res_cb_t const&,

@@ -21,6 +21,7 @@ target_link_libraries(web-server
   ${CMAKE_THREAD_LIBS_INIT}
   boost
   boost-iostreams
+  utl
 )
 target_include_directories(web-server SYSTEM PUBLIC include)
 if(MSVC)
