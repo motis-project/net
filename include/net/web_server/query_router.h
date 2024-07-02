@@ -47,7 +47,7 @@ concept JsonRouteHandler =
 
 template <typename Fn>
 concept UrlRouteHandler = requires(boost::urls::url_view const& url, Fn f) {
-  { f(url) } -> std::convertible_to<boost::json::value>;
+  { f(url) } -> JSON;
 };
 
 struct query_router {
@@ -82,10 +82,9 @@ struct query_router {
   }
 
   template <JsonRouteHandler Fn>
-  query_router& route(std::string method, std::string const& path_regex,
-                      Fn&& fn) {
+  query_router& post(std::string const& path_regex, Fn&& fn) {
     return route(
-        std::move(method), path_regex,
+        "POST", path_regex,
         [fn = std::forward<Fn>(fn)](web_server::http_req_t req,
                                     web_server::http_res_cb_t const& cb,
                                     bool is_ssl) {
@@ -109,27 +108,30 @@ struct query_router {
   }
 
   template <UrlRouteHandler Fn>
-  query_router& route(std::string method, std::string const& path_regex,
-                      Fn&& fn) {
-    return route(std::move(method), path_regex,
-                 [fn = std::forward<Fn>(fn)](
-                     route_request req, web_server::http_res_cb_t const& cb,
-                     bool is_ssl) {
-                   try {
-                     auto res = net::web_server::string_res_t{
-                         boost::beast::http::status::ok, req.version()};
-                     res.body() = boost::json::serialize(fn(req.url_));
-                     res.keep_alive(req.keep_alive());
-                     cb(res);
-                   } catch (std::exception const& e) {
-                     std::cout << "exception: " << e.what() << "\n";
-                     auto res = net::web_server::empty_res_t{
-                         boost::beast::http::status::internal_server_error,
-                         req.version()};
-                     res.keep_alive(req.keep_alive());
-                     cb(res);
-                   }
-                 });
+  query_router& get(std::string const& path_regex, Fn&& fn) {
+    namespace http = boost::beast::http;
+    namespace json = boost::json;
+    return route(
+        "GET", path_regex,
+        [fn = std::forward<Fn>(fn)](route_request req,
+                                    web_server::http_res_cb_t const& cb,
+                                    bool is_ssl) {
+          try {
+            auto res =
+                web_server::string_res_t{http::status::ok, req.version()};
+            res.set(http::field::content_type, "application/json");
+            res.body() = json::serialize(json::value_from(fn(req.url_)));
+            res.keep_alive(req.keep_alive());
+            cb(res);
+          } catch (std::exception const& e) {
+            std::cout << "exception: " << e.what() << "\n";
+            auto res = net::web_server::empty_res_t{
+                boost::beast::http::status::internal_server_error,
+                req.version()};
+            res.keep_alive(req.keep_alive());
+            cb(res);
+          }
+        });
   }
 
   void operator()(web_server::http_req_t, web_server::http_res_cb_t const&,
