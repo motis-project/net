@@ -22,6 +22,7 @@ target_link_libraries(web-server
   boost
   boost-iostreams
   utl
+  boost-url
 )
 target_include_directories(web-server SYSTEM PUBLIC include)
 if(MSVC)
