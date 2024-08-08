@@ -31,11 +31,12 @@ if(MSVC)
 endif()
 
 add_library(web-server-tls ${web-server-src} src/base64.cc)
-target_compile_features(web-server-tls PUBLIC cxx_std_17)
+target_compile_features(web-server-tls PUBLIC cxx_std_20)
 target_link_libraries(web-server-tls
   ${CMAKE_THREAD_LIBS_INIT}
   boost
   boost-iostreams
+  utl
   ssl
   crypto
 )
