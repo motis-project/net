@@ -50,6 +50,11 @@ concept UrlRouteHandler = requires(boost::urls::url_view const& url, Fn f) {
   { f(url) } -> JSON;
 };
 
+template <typename Fn>
+concept Available = requires(Fn f) {
+  { f.is_available() } -> std::convertible_to<bool>;
+};
+
 struct query_router {
   using route_request_handler = std::function<void(
       route_request const&, web_server::http_res_cb_t, bool)>;
@@ -60,6 +65,12 @@ struct query_router {
   template <StringRouteHandler Fn>
   query_router& route(std::string method, std::string const& path_regex,
                       Fn&& fn) {
+    if constexpr (Available<Fn>) {
+      if (!fn.is_available()) {
+        return;
+      }
+    }
+
     return route(std::move(method), path_regex,
                  [fn = std::forward<Fn>(fn)](
                      web_server::http_req_t req,
@@ -83,6 +94,12 @@ struct query_router {
 
   template <JsonRouteHandler Fn>
   query_router& post(std::string const& path_regex, Fn&& fn) {
+    if constexpr (Available<Fn>) {
+      if (!fn.is_available()) {
+        return;
+      }
+    }
+
     return route(
         "POST", path_regex,
         [fn = std::forward<Fn>(fn)](web_server::http_req_t req,
@@ -109,6 +126,12 @@ struct query_router {
 
   template <UrlRouteHandler Fn>
   query_router& get(std::string const& path_regex, Fn&& fn) {
+    if constexpr (Available<Fn>) {
+      if (!fn.is_available()) {
+        return;
+      }
+    }
+
     namespace http = boost::beast::http;
     namespace json = boost::json;
     return route(
