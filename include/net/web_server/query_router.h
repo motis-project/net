@@ -67,7 +67,7 @@ struct query_router {
                       Fn&& fn) {
     if constexpr (Available<Fn>) {
       if (!fn.is_available()) {
-        return;
+        return *this;
       }
     }
 
@@ -96,7 +96,7 @@ struct query_router {
   query_router& post(std::string const& path_regex, Fn&& fn) {
     if constexpr (Available<Fn>) {
       if (!fn.is_available()) {
-        return;
+        return *this;
       }
     }
 
@@ -128,7 +128,7 @@ struct query_router {
   query_router& get(std::string const& path_regex, Fn&& fn) {
     if constexpr (Available<Fn>) {
       if (!fn.is_available()) {
-        return;
+        return *this;
       }
     }
 
