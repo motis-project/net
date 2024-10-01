@@ -4,15 +4,23 @@
 #include <iostream>
 #include <regex>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "boost/algorithm/string/predicate.hpp"
 #include "boost/beast/http/status.hpp"
 #include "boost/json.hpp"
+#include "boost/url.hpp"
 #include "boost/url/url_view.hpp"
 
-#include "net/web_server/web_server.h"
-
 #include "utl/overloaded.h"
+
+#include "net/base64.h"
+#include "net/web_server/enable_cors.h"
+#include "net/web_server/responses.h"
+#include "net/web_server/serve_static.h"
+#include "net/web_server/url_decode.h"
+#include "net/web_server/web_server.h"
 
 namespace net {
 
@@ -21,7 +29,7 @@ using reply = web_server::http_res_t;
 
 struct route_request : public web_server::http_req_t {
   route_request(request req, boost::urls::url_view const url)
-      : web_server::http_req_t(req), url_{url} {}
+      : web_server::http_req_t{std::move(req)}, url_{url} {}
   boost::urls::url_view url_;
   std::vector<std::string> path_params_;
   std::string username_, password_;
@@ -50,61 +58,69 @@ concept UrlRouteHandler = requires(boost::urls::url_view const& url, Fn f) {
   { f(url) } -> JSON;
 };
 
-template <typename Fn>
-concept Available = requires(Fn f) {
-  { f.is_available() } -> std::convertible_to<bool>;
+struct default_exec {
+  void exec(auto&& fn, web_server::http_res_cb_t cb) { cb(fn()); }
 };
 
-struct query_router {
-  using route_request_handler = std::function<void(
-      route_request const&, web_server::http_res_cb_t, bool)>;
+struct asio_exec {
+  asio_exec(boost::asio::io_context& io, boost::asio::io_context& worker_pool)
+      : io_{io}, worker_pool_{worker_pool} {}
 
-  query_router& route(std::string method, std::string const& path_regex,
-                      route_request_handler handler);
+  auto exec(auto&& f, web_server::http_res_cb_t cb) {
+    worker_pool_.post([&, f = std::move(f), cb = std::move(cb)]() mutable {
+      io_.post([cb = std::move(cb),
+                res = std::make_shared<web_server::http_res_t>(f())]() mutable {
+        cb(std::move(*res));
+      });
+    });
+  }
+
+  boost::asio::io_context& io_;
+  boost::asio::io_context& worker_pool_;
+};
+
+template <typename Executor = default_exec>
+struct query_router {
+  using route_request_handler = std::function<reply(route_request, bool)>;
+
+  explicit query_router(Executor&& exec = Executor{})
+      : exec_{std::move(exec)} {}
+
+  query_router& route(std::string method, std::string path_regex,
+                      route_request_handler handler) {
+    routes_.push_back(
+        {std::move(method), std::regex(path_regex), std::move(handler)});
+    return *this;
+  }
 
   template <StringRouteHandler Fn>
   query_router& route(std::string method, std::string const& path_regex,
                       Fn&& fn) {
-    if constexpr (Available<Fn>) {
-      if (!fn.is_available()) {
-        return *this;
-      }
-    }
-
     return route(std::move(method), path_regex,
-                 [fn = std::forward<Fn>(fn)](
-                     web_server::http_req_t req,
-                     web_server::http_res_cb_t const& cb, bool is_ssl) {
+                 [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
+                                             bool is_ssl) -> reply {
                    try {
                      auto res = net::web_server::string_res_t{
                          boost::beast::http::status::ok, req.version()};
                      res.body() = fn(req.body());
                      res.keep_alive(req.keep_alive());
-                     cb(res);
+                     return res;
                    } catch (std::exception const& e) {
-                     std::cout << "exception: " << e.what() << "\n";
                      auto res = net::web_server::empty_res_t{
                          boost::beast::http::status::internal_server_error,
                          req.version()};
                      res.keep_alive(req.keep_alive());
-                     cb(res);
+                     return res;
                    }
                  });
   }
 
   template <JsonRouteHandler Fn>
   query_router& post(std::string const& path_regex, Fn&& fn) {
-    if constexpr (Available<Fn>) {
-      if (!fn.is_available()) {
-        return *this;
-      }
-    }
-
     return route(
         "POST", path_regex,
-        [fn = std::forward<Fn>(fn)](web_server::http_req_t req,
-                                    web_server::http_res_cb_t const& cb,
-                                    bool is_ssl) {
+        [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
+                                    bool is_ssl) -> reply {
           try {
             auto res = net::web_server::string_res_t{
                 boost::beast::http::status::ok, req.version()};
@@ -112,56 +128,114 @@ struct query_router {
                 fn(boost::json::value_to<std::decay_t<utl::first_argument<Fn>>>(
                     boost::json::parse(req.body())))));
             res.keep_alive(req.keep_alive());
-            cb(res);
+            return res;
           } catch (std::exception const& e) {
-            std::cout << "exception: " << e.what() << "\n";
             auto res = net::web_server::empty_res_t{
                 boost::beast::http::status::internal_server_error,
                 req.version()};
             res.keep_alive(req.keep_alive());
-            cb(res);
+            return res;
           }
         });
   }
 
   template <UrlRouteHandler Fn>
   query_router& get(std::string const& path_regex, Fn&& fn) {
-    if constexpr (Available<Fn>) {
-      if (!fn.is_available()) {
-        return *this;
-      }
-    }
-
     namespace http = boost::beast::http;
     namespace json = boost::json;
-    return route(
-        "GET", path_regex,
-        [fn = std::forward<Fn>(fn)](route_request req,
-                                    web_server::http_res_cb_t const& cb,
-                                    bool is_ssl) {
-          try {
-            auto res =
-                web_server::string_res_t{http::status::ok, req.version()};
-            res.set(http::field::content_type, "application/json");
-            res.body() = json::serialize(json::value_from(fn(req.url_)));
-            res.keep_alive(req.keep_alive());
-            cb(res);
-          } catch (std::exception const& e) {
-            std::cout << "exception: " << e.what() << "\n";
-            auto res = net::web_server::empty_res_t{
-                boost::beast::http::status::internal_server_error,
-                req.version()};
-            res.keep_alive(req.keep_alive());
-            cb(res);
-          }
-        });
+    return route("GET", path_regex,
+                 [fn = std::forward<Fn>(fn)](route_request const& req,
+                                             bool const ssl) -> reply {
+                   try {
+                     auto res = web_server::string_res_t{http::status::ok,
+                                                         req.version()};
+                     res.set(http::field::content_type, "application/json");
+                     res.body() =
+                         json::serialize(json::value_from(fn(req.url_)));
+                     res.keep_alive(req.keep_alive());
+                     return res;
+                   } catch (std::exception const& e) {
+                     auto res = net::web_server::empty_res_t{
+                         boost::beast::http::status::internal_server_error,
+                         req.version()};
+                     res.keep_alive(req.keep_alive());
+                     return res;
+                   }
+                 });
   }
 
-  void operator()(web_server::http_req_t, web_server::http_res_cb_t const&,
-                  bool);
-  void reply_hook(std::function<void(web_server::http_res_t&)> reply_hook);
-  void enable_cors();
-  void serve_files(std::filesystem::path const&);
+  void operator()(web_server::http_req_t req, web_server::http_res_cb_t cb,
+                  bool is_ssl) {
+    auto const url = boost::urls::url_view{req.target()};
+    auto const path = url.path();
+
+    auto match = std::cmatch{};
+    auto route =
+        std::find_if(begin(routes_), end(routes_), [&](handler const& h) {
+          return (h.method_ == "*" || h.method_ == req.method_string()) &&
+                 std::regex_match(path.c_str(), path.c_str() + path.size(),
+                                  match, h.path_);
+        });
+
+    if (route == end(routes_)) {
+      auto rep = reply{not_found_response(req)};
+      if (reply_hook_) {
+        reply_hook_(rep);
+      }
+      return cb(std::move(rep));
+    }
+
+    auto route_req = route_request{std::move(req), url};
+    for (unsigned i = 1; i < match.size(); ++i) {
+      route_req.path_params_.push_back(match[i]);
+    }
+
+    set_credentials(route_req);
+    decode_content(route_req);
+
+    return exec_.exec(
+        [this, route, is_ssl, req = std::move(route_req)]() {
+          reply rep;
+          try {
+            rep = route->request_handler_(req, is_ssl);
+          } catch (std::exception const& e) {
+            using namespace boost::json;
+            rep = server_error_response(req,
+                                        serialize(value{{"error", e.what()}}));
+          } catch (...) {
+            rep = reply{server_error_response(req)};
+          }
+          if (reply_hook_) {
+            reply_hook_(rep);
+          }
+          return std::move(rep);
+        },
+        std::move(cb));
+  }
+
+  void reply_hook(std::function<void(reply&)> reply_hook) {
+    reply_hook_ = std::move(reply_hook);
+  }
+
+  void enable_cors() {
+    reply_hook([](reply& rep) { net::enable_cors(rep); });
+    route("OPTIONS", ".*",
+          [](route_request const& req, bool) { return empty_response(req); });
+  }
+
+  void serve_files(std::filesystem::path const& p) {
+    route("GET", ".*",
+          [p](route_request const& req, bool) -> web_server::http_res_t {
+            if (auto res = serve_static_file(p.generic_string(), req);
+                res.has_value()) {
+              return std::move(*res);
+            } else {
+              namespace http = boost::beast::http;
+              return net::web_server::string_res_t{http::status::not_found,
+                                                   req.version()};
+            }
+          });
+  }
 
 private:
   struct handler {
@@ -170,12 +244,39 @@ private:
     route_request_handler request_handler_;
   };
 
-  static void decode_content(request& req);
+  static void decode_content(request& req) {
+    if (auto const it =
+            req.base().find(boost::beast::http::field::content_type);
+        it != end(req.base()) &&
+        it->value().find("urlencoded") != std::string_view::npos) {
+      std::string decoded_content;
+      url_decode(req.body(), decoded_content);
+      req.body() = decoded_content;
+    }
+  }
 
-  static void set_credentials(route_request& req);
+  static void set_credentials(route_request& req) {
+    if (auto const it =
+            req.base().find(boost::beast::http::field::authorization);
+        it != req.base().end()) {
+      auto const auth = it->value().substr(6);
+      auto const credentials =
+          decode_base64(std::string{auth.data(), auth.size()});
+
+      auto const split = credentials.find_first_of(':');
+      if (split == std::string::npos) {
+        return;
+      }
+
+      req.username_ = credentials.substr(0, split);
+      req.password_ = credentials.substr(split + 1, std::string::npos);
+    }
+  }
 
   std::vector<handler> routes_;
   std::function<void(reply&)> reply_hook_;
+
+  Executor exec_;
 };
 
 }  // namespace net
