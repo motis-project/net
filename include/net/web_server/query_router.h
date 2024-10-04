@@ -1,25 +1,16 @@
 #pragma once
 
 #include <filesystem>
-#include <iostream>
-#include <regex>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "boost/algorithm/string/predicate.hpp"
-#include "boost/beast/http/status.hpp"
-#include "boost/json.hpp"
-#include "boost/url.hpp"
-#include "boost/url/url_view.hpp"
-
 #include "utl/overloaded.h"
 
-#include "net/base64.h"
-#include "net/web_server/enable_cors.h"
-#include "net/web_server/responses.h"
-#include "net/web_server/serve_static.h"
-#include "net/web_server/url_decode.h"
+#include "boost/json.hpp"
+#include "boost/url.hpp"
+
 #include "net/web_server/web_server.h"
 
 namespace net {
@@ -63,8 +54,7 @@ struct default_exec {
 };
 
 struct asio_exec {
-  asio_exec(boost::asio::io_context& io, boost::asio::io_context& worker_pool)
-      : io_{io}, worker_pool_{worker_pool} {}
+  asio_exec(boost::asio::io_context& io, boost::asio::io_context& worker_pool);
 
   auto exec(auto&& f, web_server::http_res_cb_t cb) {
     worker_pool_.post([&, f = std::move(f), cb = std::move(cb)]() mutable {
@@ -79,19 +69,18 @@ struct asio_exec {
   boost::asio::io_context& worker_pool_;
 };
 
+using route_request_handler = std::function<reply(route_request, bool)>;
+struct handler;
+
 template <typename Executor = default_exec>
 struct query_router {
-  using route_request_handler = std::function<reply(route_request, bool)>;
-
-  explicit query_router(Executor&& exec = Executor{})
-      : exec_{std::move(exec)} {}
+  explicit query_router(Executor&& exec);
+  ~query_router();
+  query_router(query_router const&);
+  query_router(query_router&&);
 
   query_router& route(std::string method, std::string path_regex,
-                      route_request_handler handler) {
-    routes_.push_back(
-        {std::move(method), std::regex(path_regex), std::move(handler)});
-    return *this;
-  }
+                      route_request_handler);
 
   template <StringRouteHandler Fn>
   query_router& route(std::string method, std::string const& path_regex,
@@ -165,116 +154,17 @@ struct query_router {
   }
 
   void operator()(web_server::http_req_t req, web_server::http_res_cb_t cb,
-                  bool is_ssl) {
-    auto const url = boost::urls::url_view{req.target()};
-    auto const path = url.path();
-
-    auto match = std::cmatch{};
-    auto route =
-        std::find_if(begin(routes_), end(routes_), [&](handler const& h) {
-          return (h.method_ == "*" || h.method_ == req.method_string()) &&
-                 std::regex_match(path.c_str(), path.c_str() + path.size(),
-                                  match, h.path_);
-        });
-
-    if (route == end(routes_)) {
-      auto rep = reply{not_found_response(req)};
-      if (reply_hook_) {
-        reply_hook_(rep);
-      }
-      return cb(std::move(rep));
-    }
-
-    auto route_req = route_request{std::move(req), url};
-    for (unsigned i = 1; i < match.size(); ++i) {
-      route_req.path_params_.push_back(match[i]);
-    }
-
-    set_credentials(route_req);
-    decode_content(route_req);
-
-    return exec_.exec(
-        [this, route, is_ssl, req = std::move(route_req)]() {
-          reply rep;
-          try {
-            rep = route->request_handler_(req, is_ssl);
-          } catch (std::exception const& e) {
-            using namespace boost::json;
-            rep = server_error_response(req,
-                                        serialize(value{{"error", e.what()}}));
-          } catch (...) {
-            rep = reply{server_error_response(req)};
-          }
-          if (reply_hook_) {
-            reply_hook_(rep);
-          }
-          return std::move(rep);
-        },
-        std::move(cb));
-  }
-
-  void reply_hook(std::function<void(reply&)> reply_hook) {
-    reply_hook_ = std::move(reply_hook);
-  }
-
-  void enable_cors() {
-    reply_hook([](reply& rep) { net::enable_cors(rep); });
-    route("OPTIONS", ".*",
-          [](route_request const& req, bool) { return empty_response(req); });
-  }
-
-  void serve_files(std::filesystem::path const& p) {
-    route("GET", ".*",
-          [p](route_request const& req, bool) -> web_server::http_res_t {
-            if (auto res = serve_static_file(p.generic_string(), req);
-                res.has_value()) {
-              return std::move(*res);
-            } else {
-              namespace http = boost::beast::http;
-              return net::web_server::string_res_t{http::status::not_found,
-                                                   req.version()};
-            }
-          });
-  }
+                  bool is_ssl);
+  void reply_hook(std::function<void(reply&)> reply_hook);
+  void enable_cors();
+  void serve_files(std::filesystem::path const& p);
 
 private:
-  struct handler {
-    std::string method_;
-    std::regex path_;
-    route_request_handler request_handler_;
-  };
+  static void decode_content(request& req);
+  static void set_credentials(route_request& req);
 
-  static void decode_content(request& req) {
-    if (auto const it =
-            req.base().find(boost::beast::http::field::content_type);
-        it != end(req.base()) &&
-        it->value().find("urlencoded") != std::string_view::npos) {
-      std::string decoded_content;
-      url_decode(req.body(), decoded_content);
-      req.body() = decoded_content;
-    }
-  }
-
-  static void set_credentials(route_request& req) {
-    if (auto const it =
-            req.base().find(boost::beast::http::field::authorization);
-        it != req.base().end()) {
-      auto const auth = it->value().substr(6);
-      auto const credentials =
-          decode_base64(std::string{auth.data(), auth.size()});
-
-      auto const split = credentials.find_first_of(':');
-      if (split == std::string::npos) {
-        return;
-      }
-
-      req.username_ = credentials.substr(0, split);
-      req.password_ = credentials.substr(split + 1, std::string::npos);
-    }
-  }
-
-  std::vector<handler> routes_;
-  std::function<void(reply&)> reply_hook_;
+  struct impl;
+  std::unique_ptr<impl> impl_;
 
   Executor exec_;
 };
