@@ -4,6 +4,7 @@
 #include <queue>
 #include <utility>
 
+#include "boost/beast/core/bind_handler.hpp"
 #include "boost/beast/core/buffers_to_string.hpp"
 #include "boost/beast/version.hpp"
 #include "boost/beast/websocket.hpp"

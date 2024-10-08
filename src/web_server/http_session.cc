@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "boost/beast/core/bind_handler.hpp"
 #include "boost/beast/http.hpp"
 #include "boost/beast/websocket/rfc6455.hpp"
 #if defined(NET_TLS)
