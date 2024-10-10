@@ -11,6 +11,7 @@
 #include "boost/json.hpp"
 #include "boost/url.hpp"
 
+#include "net/web_server/content_encoding.h"
 #include "net/web_server/web_server.h"
 
 namespace net {
@@ -91,7 +92,7 @@ struct query_router {
                    try {
                      auto res = net::web_server::string_res_t{
                          boost::beast::http::status::ok, req.version()};
-                     res.body() = fn(req.body());
+                     set_response_body(res, req, fn(req.body()));
                      res.keep_alive(req.keep_alive());
                      return res;
                    } catch (std::exception const& e) {
@@ -106,41 +107,18 @@ struct query_router {
 
   template <JsonRouteHandler Fn>
   query_router& post(std::string const& path_regex, Fn&& fn) {
-    return route(
-        "POST", path_regex,
-        [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
-                                    bool is_ssl) -> reply {
-          try {
-            auto res = net::web_server::string_res_t{
-                boost::beast::http::status::ok, req.version()};
-            res.body() = boost::json::serialize(boost::json::value_from(
-                fn(boost::json::value_to<std::decay_t<utl::first_argument<Fn>>>(
-                    boost::json::parse(req.body())))));
-            res.keep_alive(req.keep_alive());
-            return res;
-          } catch (std::exception const& e) {
-            auto res = net::web_server::empty_res_t{
-                boost::beast::http::status::internal_server_error,
-                req.version()};
-            res.keep_alive(req.keep_alive());
-            return res;
-          }
-        });
-  }
-
-  template <UrlRouteHandler Fn>
-  query_router& get(std::string const& path_regex, Fn&& fn) {
-    namespace http = boost::beast::http;
-    namespace json = boost::json;
-    return route("GET", path_regex,
-                 [fn = std::forward<Fn>(fn)](route_request const& req,
-                                             bool const ssl) -> reply {
+    return route("POST", path_regex,
+                 [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
+                                             bool is_ssl) -> reply {
                    try {
-                     auto res = web_server::string_res_t{http::status::ok,
-                                                         req.version()};
-                     res.set(http::field::content_type, "application/json");
-                     res.body() =
-                         json::serialize(json::value_from(fn(req.url_)));
+                     auto res = net::web_server::string_res_t{
+                         boost::beast::http::status::ok, req.version()};
+                     set_response_body(
+                         res, req,
+                         boost::json::serialize(boost::json::value_from(
+                             fn(boost::json::value_to<
+                                 std::decay_t<utl::first_argument<Fn>>>(
+                                 boost::json::parse(req.body()))))));
                      res.keep_alive(req.keep_alive());
                      return res;
                    } catch (std::exception const& e) {
@@ -151,6 +129,32 @@ struct query_router {
                      return res;
                    }
                  });
+  }
+
+  template <UrlRouteHandler Fn>
+  query_router& get(std::string const& path_regex, Fn&& fn) {
+    namespace http = boost::beast::http;
+    namespace json = boost::json;
+    return route(
+        "GET", path_regex,
+        [fn = std::forward<Fn>(fn)](route_request const& req,
+                                    bool const ssl) -> reply {
+          try {
+            auto res =
+                web_server::string_res_t{http::status::ok, req.version()};
+            res.set(http::field::content_type, "application/json");
+            set_response_body(res, req,
+                              json::serialize(json::value_from(fn(req.url_))));
+            res.keep_alive(req.keep_alive());
+            return res;
+          } catch (std::exception const& e) {
+            auto res = net::web_server::empty_res_t{
+                boost::beast::http::status::internal_server_error,
+                req.version()};
+            res.keep_alive(req.keep_alive());
+            return res;
+          }
+        });
   }
 
   void operator()(web_server::http_req_t req, web_server::http_res_cb_t cb,
