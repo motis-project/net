@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <utility>
@@ -23,7 +24,6 @@ struct route_request : public web_server::http_req_t {
   route_request(request req, boost::urls::url_view const url)
       : web_server::http_req_t{std::move(req)}, url_{url} {}
   boost::urls::url_view url_;
-  std::vector<std::string> path_params_;
   std::string username_, password_;
 };
 
@@ -59,10 +59,24 @@ struct asio_exec {
 
   auto exec(auto&& f, web_server::http_res_cb_t cb) {
     worker_pool_.post([&, f = std::move(f), cb = std::move(cb)]() mutable {
-      io_.post([cb = std::move(cb),
-                res = std::make_shared<web_server::http_res_t>(f())]() mutable {
-        cb(std::move(*res));
-      });
+      try {
+        auto res = std::make_shared<web_server::http_res_t>(f());
+        io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
+          cb(std::move(*res));
+        });
+      } catch (...) {
+        std::cerr << "UNEXPECTED EXCEPTION\n";
+
+        auto str = web_server::string_res_t{
+            boost::beast::http::status::internal_server_error, 11};
+        str.body() = "error";
+        str.prepare_payload();
+
+        auto res = std::make_shared<web_server::http_res_t>(str);
+        io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
+          cb(std::move(*res));
+        });
+      }
     });
   }
 
@@ -80,7 +94,7 @@ struct query_router {
   query_router(query_router const&);
   query_router(query_router&&);
 
-  query_router& route(std::string method, std::string path_regex,
+  query_router& route(std::string method, std::string prefix,
                       route_request_handler);
 
   template <StringRouteHandler Fn>
@@ -89,46 +103,30 @@ struct query_router {
     return route(std::move(method), path_regex,
                  [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
                                              bool is_ssl) -> reply {
-                   try {
-                     auto res = net::web_server::string_res_t{
-                         boost::beast::http::status::ok, req.version()};
-                     set_response_body(res, req, fn(req.body()));
-                     res.keep_alive(req.keep_alive());
-                     return res;
-                   } catch (std::exception const& e) {
-                     auto res = net::web_server::empty_res_t{
-                         boost::beast::http::status::internal_server_error,
-                         req.version()};
-                     res.keep_alive(req.keep_alive());
-                     return res;
-                   }
+                   auto res = net::web_server::string_res_t{
+                       boost::beast::http::status::ok, req.version()};
+                   set_response_body(res, req, fn(req.body()));
+                   res.keep_alive(req.keep_alive());
+                   return res;
                  });
   }
 
   template <JsonRouteHandler Fn>
   query_router& post(std::string const& path_regex, Fn&& fn) {
-    return route("POST", path_regex,
-                 [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
-                                             bool is_ssl) -> reply {
-                   try {
-                     auto res = net::web_server::string_res_t{
-                         boost::beast::http::status::ok, req.version()};
-                     set_response_body(
-                         res, req,
-                         boost::json::serialize(boost::json::value_from(
-                             fn(boost::json::value_to<
-                                 std::decay_t<utl::first_argument<Fn>>>(
-                                 boost::json::parse(req.body()))))));
-                     res.keep_alive(req.keep_alive());
-                     return res;
-                   } catch (std::exception const& e) {
-                     auto res = net::web_server::empty_res_t{
-                         boost::beast::http::status::internal_server_error,
-                         req.version()};
-                     res.keep_alive(req.keep_alive());
-                     return res;
-                   }
-                 });
+    return route(
+        "POST", path_regex,
+        [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
+                                    bool is_ssl) -> reply {
+          auto res = net::web_server::string_res_t{
+              boost::beast::http::status::ok, req.version()};
+          set_response_body(
+              res, req,
+              boost::json::serialize(boost::json::value_from(fn(
+                  boost::json::value_to<std::decay_t<utl::first_argument<Fn>>>(
+                      boost::json::parse(req.body()))))));
+          res.keep_alive(req.keep_alive());
+          return res;
+        });
   }
 
   template <UrlRouteHandler Fn>
@@ -139,21 +137,12 @@ struct query_router {
         "GET", path_regex,
         [fn = std::forward<Fn>(fn)](route_request const& req,
                                     bool const ssl) -> reply {
-          try {
-            auto res =
-                web_server::string_res_t{http::status::ok, req.version()};
-            res.set(http::field::content_type, "application/json");
-            set_response_body(res, req,
-                              json::serialize(json::value_from(fn(req.url_))));
-            res.keep_alive(req.keep_alive());
-            return res;
-          } catch (std::exception const& e) {
-            auto res = net::web_server::empty_res_t{
-                boost::beast::http::status::internal_server_error,
-                req.version()};
-            res.keep_alive(req.keep_alive());
-            return res;
-          }
+          auto res = web_server::string_res_t{http::status::ok, req.version()};
+          res.set(http::field::content_type, "application/json");
+          set_response_body(res, req,
+                            json::serialize(json::value_from(fn(req.url_))));
+          res.keep_alive(req.keep_alive());
+          return res;
         });
   }
 

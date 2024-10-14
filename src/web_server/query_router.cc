@@ -2,7 +2,6 @@
 
 #include <filesystem>
 #include <iostream>
-#include <regex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -13,6 +12,7 @@
 #include "boost/url.hpp"
 #include "boost/url/url_view.hpp"
 
+#include "utl/helpers/algorithm.h"
 #include "utl/overloaded.h"
 
 #include "net/base64.h"
@@ -26,7 +26,7 @@ namespace net {
 
 struct handler {
   std::string method_;
-  std::regex path_;
+  std::string prefix_;
   route_request_handler request_handler_;
 };
 
@@ -56,10 +56,10 @@ query_router<Executor>::~query_router() = default;
 
 template <typename Executor>
 query_router<Executor>& query_router<Executor>::route(std::string method,
-                                                      std::string path_regex,
+                                                      std::string prefix,
                                                       route_request_handler h) {
   impl_->routes_.push_back(
-      {std::move(method), std::regex(path_regex), std::move(h)});
+      {std::move(method), std::move(prefix), std::move(h)});
   return *this;
 }
 
@@ -70,13 +70,10 @@ void query_router<Executor>::operator()(web_server::http_req_t req,
   auto const url = boost::urls::url_view{req.target()};
   auto const path = url.path();
 
-  auto match = std::cmatch{};
-  auto route =
-      std::find_if(begin(impl_->routes_), end(impl_->routes_), [&](auto&& h) {
-        return (h.method_ == "*" || h.method_ == req.method_string()) &&
-               std::regex_match(path.c_str(), path.c_str() + path.size(), match,
-                                h.path_);
-      });
+  auto route = utl::find_if(impl_->routes_, [&](handler const& h) {
+    return (h.method_ == "*" || h.method_ == req.method_string()) &&
+           path.starts_with(h.prefix_);
+  });
 
   if (route == end(impl_->routes_)) {
     auto rep = reply{not_found_response(req)};
@@ -87,9 +84,6 @@ void query_router<Executor>::operator()(web_server::http_req_t req,
   }
 
   auto route_req = route_request{std::move(req), url};
-  for (unsigned i = 1; i < match.size(); ++i) {
-    route_req.path_params_.push_back(match[i]);
-  }
 
   set_credentials(route_req);
   decode_content(route_req);
@@ -107,7 +101,11 @@ void query_router<Executor>::operator()(web_server::http_req_t req,
           rep = reply{server_error_response(req)};
         }
         if (impl_->reply_hook_) {
-          impl_->reply_hook_(rep);
+          try {
+            impl_->reply_hook_(rep);
+          } catch (...) {
+            std::cerr << "query_router: unhandled exception in reply hook\n";
+          }
         }
         return std::move(rep);
       },
