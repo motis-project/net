@@ -121,13 +121,13 @@ void query_router<Executor>::reply_hook(
 template <typename Executor>
 void query_router<Executor>::enable_cors() {
   reply_hook([](reply& rep) { net::enable_cors(rep); });
-  route("OPTIONS", ".*",
+  route("OPTIONS", "",
         [](route_request const& req, bool) { return empty_response(req); });
 }
 
 template <typename Executor>
 void query_router<Executor>::serve_files(std::filesystem::path const& p) {
-  route("GET", ".*",
+  route("GET", "",
         [p](route_request const& req, bool) -> web_server::http_res_t {
           if (auto res = serve_static_file(p.generic_string(), req);
               res.has_value()) {
