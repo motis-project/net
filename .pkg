@@ -2,14 +2,14 @@
   url=git@github.com:motis-project/libressl.git
   branch=master
   commit=39c1bf084d5c179d7bbce7ba902fffbebff0ee15
-[zlib]
-  url=git@github.com:motis-project/zlib.git
-  branch=master
-  commit=8e7c86d3a0e49101b9a67d74c4a07345dcb0e485
+[zlib-ng]
+  url=git@github.com:motis-project/zlib-ng.git
+  branch=develop
+  commit=68ab3e2d80253ec5dc3c83691d9ff70477b32cd3
 [boost]
   url=git@github.com:motis-project/boost.git
   branch=master
-  commit=be5235eb2258d2ec19e32546ab767a62311d9b46
+  commit=73549ebca677fe6214202a1ab580362b4f80e653
 [utl]
   url=git@github.com:motis-project/utl.git
   branch=master
