@@ -92,32 +92,35 @@ struct http_session {
         // This holds a work item
         struct response_impl : response {
           response_impl(
-              std::weak_ptr<http_session> weak_session,
+              std::shared_ptr<http_session> session,
               boost::beast::http::message<IsRequest, Body, Fields>&& msg)
-              : weak_session_(std::move(weak_session)), msg_(std::move(msg)) {}
+              : session_(std::move(session)), msg_(std::move(msg)) {}
 
           void send() override {
-            if (auto session = weak_session_.lock()) {
-              boost::beast::http::async_write(
-                  session->derived().stream(), msg_,
-                  boost::beast::bind_front_handler(
-                      &http_session::on_write,
-                      session->derived().shared_from_this(), msg_.need_eof()));
+            if (session_->closed_) {
+              return;
             }
+            boost::beast::http::async_write(
+                session_->derived().stream(), msg_,
+                boost::beast::bind_front_handler(&http_session::on_write,
+                                                 session_, msg_.need_eof()));
           }
 
-          std::weak_ptr<http_session> weak_session_;
+          std::shared_ptr<http_session> session_;
           boost::beast::http::message<IsRequest, Body, Fields> msg_;
         };
 
-        auto weak_session = session_.derived().weak_from_this();
-        response_ =
-            std::make_unique<response_impl>(weak_session, std::move(msg));
+        if (session_.closed_) {
+          return;
+        }
+        auto session = session_.derived().shared_from_this();
+        response_ = std::make_unique<response_impl>(session, std::move(msg));
         boost::asio::post(session_.derived().stream().get_executor(),
-                          [weak_session]() {
-                            if (auto session = weak_session.lock()) {
-                              session->send_next_response();
+                          [session]() {
+                            if (session->closed_) {
+                              return;
                             }
+                            session->send_next_response();
                           });
       }
 
@@ -171,6 +174,7 @@ struct http_session {
     }
 
     if (ec) {
+      closed_ = true;
       return fail(ec, "read");
     }
 
@@ -218,6 +222,7 @@ struct http_session {
 
     write_active_ = false;
     if (ec) {
+      closed_ = true;
       return fail(ec, "write");
     }
 
@@ -243,6 +248,7 @@ struct http_session {
 
   queue queue_;
   bool write_active_{false};
+  bool closed_{false};
 
   boost::beast::flat_buffer buffer_;
 
@@ -276,6 +282,7 @@ struct plain_http_session
 
   // Called by the base class
   void do_eof() {
+    closed_ = true;
     // Send a TCP shutdown
     boost::beast::error_code ec;
     stream_.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
@@ -338,6 +345,7 @@ struct ssl_http_session
 
   // Called by the base class
   void do_eof() {
+    closed_ = true;
     // Set the timeout.
     boost::beast::get_lowest_layer(stream_).expires_after(settings_->timeout_);
 
@@ -350,6 +358,7 @@ struct ssl_http_session
 private:
   void on_handshake(boost::beast::error_code ec, std::size_t bytes_used) {
     if (ec) {
+      closed_ = true;
       return fail(ec, "handshake");
     }
 
@@ -361,6 +370,7 @@ private:
 
   static void on_shutdown(boost::beast::error_code ec) {
     if (ec) {
+      closed_ = true;
       return fail(ec, "shutdown");
     }
 
