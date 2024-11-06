@@ -49,7 +49,7 @@ struct http_session {
     };
 
     explicit queue(http_session& self, std::size_t limit)
-        : self_(self), limit_(limit) {
+        : session_(self), limit_(limit) {
       items_.reserve(limit);
     }
 
@@ -75,13 +75,13 @@ struct http_session {
       if (items_.empty() || !items_.front()->is_finished()) {
         return false;
       }
-      self_.write_active_ = true;
+      session_.write_active_ = true;
       items_.front()->response_->send();
       return true;
     }
 
     struct pending_request {
-      explicit pending_request(http_session& session) : self_(session) {}
+      explicit pending_request(http_session& session) : session_{session} {}
 
       bool is_finished() const { return static_cast<bool>(response_); }
 
@@ -91,40 +91,46 @@ struct http_session {
           boost::beast::http::message<IsRequest, Body, Fields>&& msg) {
         // This holds a work item
         struct response_impl : response {
-          http_session& self_;
-          boost::beast::http::message<IsRequest, Body, Fields> msg_;
-
           response_impl(
-              http_session& self,
+              std::weak_ptr<http_session> weak_session,
               boost::beast::http::message<IsRequest, Body, Fields>&& msg)
-              : self_(self), msg_(std::move(msg)) {}
+              : weak_session_(std::move(weak_session)), msg_(std::move(msg)) {}
 
           void send() override {
-            boost::beast::http::async_write(
-                self_.derived().stream(), msg_,
-                boost::beast::bind_front_handler(
-                    &http_session::on_write, self_.derived().shared_from_this(),
-                    msg_.need_eof()));
+            if (auto session = weak_session_.lock()) {
+              boost::beast::http::async_write(
+                  session->derived().stream(), msg_,
+                  boost::beast::bind_front_handler(
+                      &http_session::on_write,
+                      session->derived().shared_from_this(), msg_.need_eof()));
+            }
           }
+
+          std::weak_ptr<http_session> weak_session_;
+          boost::beast::http::message<IsRequest, Body, Fields> msg_;
         };
 
-        response_ = std::make_unique<response_impl>(self_, std::move(msg));
-        boost::asio::post(self_.derived().stream().get_executor(),
-                          [&, self = self_.derived().shared_from_this()]() {
-                            self_.send_next_response();
+        auto weak_session = session_.derived().weak_from_this();
+        response_ =
+            std::make_unique<response_impl>(weak_session, std::move(msg));
+        boost::asio::post(session_.derived().stream().get_executor(),
+                          [weak_session]() {
+                            if (auto session = weak_session.lock()) {
+                              session->send_next_response();
+                            }
                           });
       }
 
-      http_session& self_;
+      http_session& session_;
       std::unique_ptr<response> response_;
     };
 
     pending_request& add_entry() {
-      return *items_.emplace_back(std::make_unique<pending_request>(self_))
+      return *items_.emplace_back(std::make_unique<pending_request>(session_))
                   .get();
     }
 
-    http_session& self_;
+    http_session& session_;
     std::vector<std::unique_ptr<pending_request>> items_;
     // Maximum number of responses we will queue
     std::size_t limit_;
