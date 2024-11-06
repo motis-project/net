@@ -350,7 +350,8 @@ struct ssl_http_session
     boost::beast::get_lowest_layer(stream_).expires_after(settings_->timeout_);
 
     // Perform the SSL shutdown
-    stream_.async_shutdown(ssl_http_session::on_shutdown);
+    stream_.async_shutdown(boost::beast::bind_front_handler(
+        &ssl_http_session::on_shutdown, shared_from_this()));
   }
 
   static bool is_ssl() { return true; }
@@ -368,7 +369,7 @@ private:
     do_read();
   }
 
-  static void on_shutdown(boost::beast::error_code ec) {
+  void on_shutdown(boost::beast::error_code ec) {
     if (ec) {
       closed_ = true;
       return fail(ec, "shutdown");
