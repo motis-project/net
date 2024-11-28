@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include "fmt/base.h"
+
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/beast/http/status.hpp"
 #include "boost/json.hpp"
@@ -14,6 +16,8 @@
 
 #include "utl/helpers/algorithm.h"
 #include "utl/overloaded.h"
+
+#include "openapi/missing_param_exception.h"
 
 #include "net/base64.h"
 #include "net/web_server/enable_cors.h"
@@ -93,6 +97,12 @@ void query_router<Executor>::operator()(web_server::http_req_t req,
         reply rep;
         try {
           rep = route->request_handler_(req, is_ssl);
+        } catch (openapi::missing_param_exception const& e) {
+          using namespace boost::json;
+          rep = bad_request_response(
+              req,
+              serialize(value{
+                  {"error", fmt::format("missing parameter: {}", e.param_)}}));
         } catch (std::exception const& e) {
           using namespace boost::json;
           rep =

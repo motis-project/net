@@ -14,3 +14,7 @@
   url=git@github.com:motis-project/utl.git
   branch=master
   commit=8c61dcaa74a7f49695d58ce7aae9de7ecb566aa1
+[openapi-cpp]
+  url=git@github.com:triptix-tech/openapi-cpp.git
+  branch=master
+  commit=dac46d043f07a119d8b7d9ccb47e51049b259bfe
