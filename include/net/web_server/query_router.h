@@ -9,6 +9,9 @@
 
 #include "utl/overloaded.h"
 
+#include "boost/fiber/algo/work_stealing.hpp"
+#include "boost/fiber/buffered_channel.hpp"
+#include "boost/fiber/operations.hpp"
 #include "boost/json.hpp"
 #include "boost/url.hpp"
 
@@ -57,7 +60,7 @@ struct default_exec {
 struct asio_exec {
   asio_exec(boost::asio::io_context& io, boost::asio::io_context& worker_pool);
 
-  auto exec(auto&& f, web_server::http_res_cb_t cb) {
+  void exec(auto&& f, web_server::http_res_cb_t cb) {
     worker_pool_.post([&, f = std::move(f), cb = std::move(cb)]() mutable {
       try {
         auto res = std::make_shared<web_server::http_res_t>(f());
@@ -82,6 +85,37 @@ struct asio_exec {
 
   boost::asio::io_context& io_;
   boost::asio::io_context& worker_pool_;
+};
+
+struct fiber_exec {
+  using task_t = std::function<void()>;
+  using channel_t = boost::fibers::buffered_channel<task_t>;
+
+  explicit fiber_exec(boost::asio::io_context& io, channel_t& ch)
+      : io_{io}, ch_{ch} {}
+
+  void exec(auto&& f, web_server::http_res_cb_t cb) {
+    ch_.try_push([&, f = std::move(f), cb = std::move(cb)]() {
+      auto res = std::make_shared<web_server::http_res_t>(f());
+      io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
+        cb(std::move(*res));
+      });
+    });
+  }
+
+  static auto run(channel_t& ch, std::size_t const n_threads) {
+    return [n_threads, &ch]() {
+      boost::fibers::use_scheduling_algorithm<
+          boost::fibers::algo::work_stealing>(n_threads);
+      auto t = task_t{};
+      while (ch.pop(t) != boost::fibers::channel_op_status::closed) {
+        t();
+      }
+    };
+  }
+
+  boost::asio::io_context& io_;
+  channel_t& ch_;
 };
 
 using route_request_handler = std::function<reply(route_request, bool)>;

@@ -9,7 +9,7 @@
 [boost]
   url=git@github.com:motis-project/boost.git
   branch=master
-  commit=73549ebca677fe6214202a1ab580362b4f80e653
+  commit=082a2d83c827e43f3b7eb8d6f0a1102cddb897ad
 [utl]
   url=git@github.com:motis-project/utl.git
   branch=master

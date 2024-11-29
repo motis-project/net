@@ -181,5 +181,6 @@ void query_router<Executor>::set_credentials(route_request& req) {
 
 template struct query_router<default_exec>;
 template struct query_router<asio_exec>;
+template struct query_router<fiber_exec>;
 
 }  // namespace net
