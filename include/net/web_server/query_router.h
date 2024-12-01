@@ -8,10 +8,9 @@
 #include <vector>
 
 #include "utl/overloaded.h"
+#include "utl/verify.h"
 
-#include "boost/fiber/algo/work_stealing.hpp"
 #include "boost/fiber/buffered_channel.hpp"
-#include "boost/fiber/operations.hpp"
 #include "boost/json.hpp"
 #include "boost/url.hpp"
 
@@ -91,27 +90,37 @@ struct fiber_exec {
   using task_t = std::function<void()>;
   using channel_t = boost::fibers::buffered_channel<task_t>;
 
-  explicit fiber_exec(boost::asio::io_context& io, channel_t& ch)
-      : io_{io}, ch_{ch} {}
+  fiber_exec(boost::asio::io_context& io, channel_t& ch) : io_{io}, ch_{ch} {}
 
-  void exec(auto&& f, web_server::http_res_cb_t cb) {
-    ch_.try_push([&, f = std::move(f), cb = std::move(cb)]() {
-      auto res = std::make_shared<web_server::http_res_t>(f());
+  void exec(auto&& f, net::web_server::http_res_cb_t cb) {
+    auto const result =
+        ch_.try_push([&, f = std::move(f), cb = std::move(cb)]() {
+          auto res = std::make_shared<net::web_server::http_res_t>(f());
+          io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
+            cb(std::move(*res));
+          });
+        });
+    if (result == boost::fibers::channel_op_status::full) {
+      auto str = web_server::string_res_t{
+          boost::beast::http::status::too_many_requests, 11};
+      str.prepare_payload();
+      auto res = std::make_shared<web_server::http_res_t>(str);
       io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
         cb(std::move(*res));
       });
-    });
-  }
-
-  static auto run(channel_t& ch, std::size_t const n_threads) {
-    return [n_threads, &ch]() {
-      boost::fibers::use_scheduling_algorithm<
-          boost::fibers::algo::work_stealing>(n_threads);
-      auto t = task_t{};
-      while (ch.pop(t) != boost::fibers::channel_op_status::closed) {
-        t();
-      }
-    };
+    } else if (result != boost::fibers::channel_op_status::success) {
+      auto str = web_server::string_res_t{
+          boost::beast::http::status::internal_server_error, 11};
+      str.body() = fmt::format(
+          R"({{"error": "channel status {}"}})",
+          static_cast<std::underlying_type_t<boost::fibers::channel_op_status>>(
+              result));
+      str.prepare_payload();
+      auto res = std::make_shared<web_server::http_res_t>(str);
+      io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
+        cb(std::move(*res));
+      });
+    }
   }
 
   boost::asio::io_context& io_;
