@@ -164,7 +164,7 @@ void query_router<Executor>::decode_content(request& req) {
 template <typename Executor>
 void query_router<Executor>::set_credentials(route_request& req) {
   if (auto const it = req.base().find(boost::beast::http::field::authorization);
-      it != req.base().end()) {
+      it != req.base().end() && it->value().length() > 6) {
     auto const auth = it->value().substr(6);
     auto const credentials =
         decode_base64(std::string{auth.data(), auth.size()});
