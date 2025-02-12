@@ -16,11 +16,11 @@ jobs:
       - name: Install clang-format
         uses: ./.github/actions/install-llvm
         with:
-          version: 15
-          packages: clang-format-15
+          version: 18
+          packages: clang-format-18
 
       - name: Format files
-        run: find src include example -type f -a \( -name "*.cc" -o -name "*.h" \) -print0 | xargs -0 clang-format-15 -i
+        run: find src include example -type f -a \( -name "*.cc" -o -name "*.h" \) -print0 | xargs -0 clang-format-18 -i
 
       - name: Check for differences
         run: |
@@ -51,16 +51,16 @@ jobs:
             cc: gcc-12
             mode: Debug
             os: ubuntu-latest
-          - name: Clang 15 Release
-            cxx: clang++-15
-            cc: clang-15
+          - name: Clang 18 Release
+            cxx: clang++-18
+            cc: clang-18
             mode: Release
             cxxflags: -stdlib=libc++
             ldflags: -lc++abi
             os: ubuntu-latest
           - name: Clang Tidy
-            cxx: clang++-15
-            cc: clang-15
+            cxx: clang++-18
+            cc: clang-18
             mode: Debug
             cxxflags: -stdlib=libc++
             ldflags: -lc++abi
@@ -74,11 +74,11 @@ jobs:
 
       # ==== INSTALL ====
       - name: Install LLVM
-        if: matrix.config.os != 'macos-latest' && matrix.config.cc == 'clang-15'
+        if: matrix.config.os != 'macos-latest' && matrix.config.cc == 'clang-18'
         uses: ./.github/actions/install-llvm
         with:
-          version: 15
-          packages: libc++-15-dev libc++abi-15-dev clang-tidy-15
+          version: 18
+          packages: libc++-18-dev libc++abi-18-dev clang-tidy-18
 
       # ==== BUILD ====
       - name: CMake
