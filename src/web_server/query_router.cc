@@ -151,7 +151,7 @@ void query_router<Executor>::enable_cors() {
 
 template <typename Executor>
 void query_router<Executor>::add_header(std::string key, std::string value) {
-  impl_->headers_.emplace_back(std::move(key), std::move(value));
+  impl_->headers_.emplace_back(header{std::move(key), std::move(value)});
 }
 
 template <typename Executor>
