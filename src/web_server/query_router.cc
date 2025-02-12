@@ -125,8 +125,8 @@ void query_router<Executor>::operator()(web_server::http_req_t req,
         }
         // Add headers
         std::visit(
-            [&headers = impl_->headers_](auto& r) {
-              for (auto& header : headers) {
+            [&](auto& r) {
+              for (auto const& header : impl_->headers) {
                 r.set(header.key_, header.value_);
               }
             },
