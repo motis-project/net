@@ -193,6 +193,7 @@ struct query_router {
                   bool is_ssl);
   void reply_hook(std::function<void(reply&)> reply_hook);
   void enable_cors();
+  void add_header(std::string key, std::string value);
   void serve_files(std::filesystem::path const& p);
 
 private:
