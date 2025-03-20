@@ -28,6 +28,11 @@
 
 namespace net {
 
+struct header {
+  std::string key_;
+  std::string value_;
+};
+
 struct handler {
   std::string method_;
   std::string prefix_;
@@ -40,6 +45,7 @@ asio_exec::asio_exec(boost::asio::io_context& io,
 
 template <typename Executor>
 struct query_router<Executor>::impl {
+  std::vector<header> headers_;
   std::vector<handler> routes_;
   std::function<void(reply&)> reply_hook_;
 };
@@ -117,6 +123,14 @@ void query_router<Executor>::operator()(web_server::http_req_t req,
             std::cerr << "query_router: unhandled exception in reply hook\n";
           }
         }
+        // Add headers
+        std::visit(
+            [&](auto& r) {
+              for (auto const& header : impl_->headers_) {
+                r.set(header.key_, header.value_);
+              }
+            },
+            rep);
         return std::move(rep);
       },
       std::move(cb));
@@ -133,6 +147,11 @@ void query_router<Executor>::enable_cors() {
   reply_hook([](reply& rep) { net::enable_cors(rep); });
   route("OPTIONS", "",
         [](route_request const& req, bool) { return empty_response(req); });
+}
+
+template <typename Executor>
+void query_router<Executor>::add_header(std::string key, std::string value) {
+  impl_->headers_.push_back(header{std::move(key), std::move(value)});
 }
 
 template <typename Executor>

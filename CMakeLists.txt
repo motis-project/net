@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(net)
+project(net LANGUAGES C CXX ASM)
 
 if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
