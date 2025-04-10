@@ -30,25 +30,28 @@ struct route_request : public web_server::http_req_t {
 };
 
 template <typename T>
-concept JSON = boost::json::has_value_to<T>::value &&
-               boost::json::has_value_from<T>::value;
+concept JSON =
+    boost::json::has_value_to<T>::value &&
+    boost::json::has_value_from<T>::value &&
+    !std::is_same_v<T, std::string>;  // avoid ambiguity with string handlers
 
 template <typename Fn>
-concept StringRouteHandler = requires(std::string_view const& req, Fn f) {
-  { f(req) } -> std::convertible_to<std::string>;
+concept StringGetHandler = requires(boost::urls::url_view const& url, Fn f) {
+  { f(url) } -> std::same_as<std::string>;
 };
 
 template <typename Fn>
-concept Function = std::is_function_v<Fn>;
+concept StringPostHandler = requires(std::string_view const& req, Fn f) {
+  { f(req) } -> std::same_as<std::string>;
+};
 
 template <typename Fn>
-concept JsonRouteHandler =
-    requires(Fn f, typename utl::first_argument<Fn> arg) {
-      { f(arg) } -> JSON;
-    };
+concept JsonPostHandler = requires(Fn f, typename utl::first_argument<Fn> arg) {
+  { f(arg) } -> JSON;
+};
 
 template <typename Fn>
-concept UrlRouteHandler = requires(boost::urls::url_view const& url, Fn f) {
+concept JsonGetHandler = requires(boost::urls::url_view const& url, Fn f) {
   { f(url) } -> JSON;
 };
 
@@ -140,7 +143,7 @@ struct query_router {
   query_router& route(std::string method, std::string prefix,
                       route_request_handler);
 
-  template <StringRouteHandler Fn>
+  template <StringPostHandler Fn>
   query_router& route(std::string method, std::string const& path_regex,
                       Fn&& fn) {
     return route(std::move(method), path_regex,
@@ -154,7 +157,22 @@ struct query_router {
                  });
   }
 
-  template <JsonRouteHandler Fn>
+  template <StringGetHandler Fn>
+  query_router& get(std::string const& path_regex, Fn&& fn) {
+    namespace http = boost::beast::http;
+    namespace json = boost::json;
+    return route("GET", path_regex,
+                 [fn = std::forward<Fn>(fn)](route_request const& req,
+                                             bool const ssl) -> reply {
+                   auto res = web_server::string_res_t{http::status::ok,
+                                                       req.version()};
+                   set_response_body(res, req, fn(req.url_));
+                   res.keep_alive(req.keep_alive());
+                   return res;
+                 });
+  }
+
+  template <JsonPostHandler Fn>
   query_router& post(std::string const& path_regex, Fn&& fn) {
     return route(
         "POST", path_regex,
@@ -162,6 +180,7 @@ struct query_router {
                                     bool is_ssl) -> reply {
           auto res = net::web_server::string_res_t{
               boost::beast::http::status::ok, req.version()};
+          res.set(boost::beast::http::field::content_type, "application/json");
           set_response_body(
               res, req,
               boost::json::serialize(boost::json::value_from(fn(
@@ -172,7 +191,7 @@ struct query_router {
         });
   }
 
-  template <UrlRouteHandler Fn>
+  template <JsonGetHandler Fn>
   query_router& get(std::string const& path_regex, Fn&& fn) {
     namespace http = boost::beast::http;
     namespace json = boost::json;
