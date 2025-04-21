@@ -21,8 +21,11 @@ inline std::string_view mime_type(beast::string_view path) {
     }
     return path.substr(pos);
   }();
-  if (iequals(ext, ".js")) {
+  if (iequals(ext, ".js") || iequals(ext, ".mjs")) {
     return "application/javascript";
+  }
+  if (iequals(ext, ".wasm")) {
+    return "application/wasm";
   }
   if (iequals(ext, ".css")) {
     return "text/css";
