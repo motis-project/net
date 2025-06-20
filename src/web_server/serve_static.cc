@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <string_view>
 
+#include "boost/url.hpp"
+
 #include "net/web_server/responses.h"
 #include "net/web_server/url_decode.h"
 
@@ -104,24 +106,16 @@ std::string path_cat(beast::string_view base, beast::string_view path) {
   return result;
 }
 
-std::string add_trailing_slash(std::string_view target) {
-  std::string new_target;
-  new_target.reserve(target.size() + 1);
-  auto const question_mark_pos = target.find('?');
-  new_target += target.substr(0, question_mark_pos);
-  new_target += '/';
-  if (question_mark_pos != std::string_view::npos) {
-    new_target += target.substr(question_mark_pos);
-  }
-  return new_target;
-}
-
 std::optional<web_server::http_res_t> handle_directory_redirect(
-    std::string const& path, web_server::http_req_t const& req) {
+    std::string const& path, web_server::http_req_t const& req,
+    boost::urls::url_view const& url) {
   boost::system::error_code sys_ec;
   auto const file_status = fs::status(fs::path{path}, sys_ec);
   if (!sys_ec.failed() && fs::is_directory(file_status)) {
-    return moved_response(req, add_trailing_slash(req.target()));
+    auto new_target = boost::urls::url{url};
+    new_target.set_path(url.path() + "/");
+    return moved_response(req,
+                          static_cast<boost::core::string_view>(new_target));
   }
   return std::nullopt;
 }
@@ -132,37 +126,25 @@ std::optional<web_server::http_res_t> serve_static_file(
     return bad_request_response(req, "Invalid method");
   }
 
-  auto const target = [&]() {
-    auto const t = req.target();
-    auto const question_mark_pos = t.find('?');
-    return question_mark_pos == std::string_view::npos
-               ? t
-               : t.substr(0, question_mark_pos);
-  }();
-  if (target.empty() || target[0] != '/' ||
-      target.find("..") != beast::string_view::npos) {
+  auto const url = boost::urls::url_view{req.target()};
+  auto const url_path = url.path();
+  if (url_path.empty() || url_path[0] != '/' ||
+      url_path.find("..") != beast::string_view::npos) {
     return bad_request_response(req, "Invalid target");
   }
 
-  auto path = path_cat(doc_root, target);
-  if (target.back() == '/') {
+  auto path = path_cat(doc_root, url_path);
+  if (url_path.back() == '/') {
     path.append("index.html");
   }
 
-  std::string decoded;
-  auto const success = url_decode(path, decoded);
-
-  if (!success) {
-    return std::nullopt;
-  }
-
-  if (auto res = handle_directory_redirect(decoded, req); res.has_value()) {
+  if (auto res = handle_directory_redirect(path, req, url); res.has_value()) {
     return res;
   }
 
   boost::beast::error_code ec;
   http::file_body::value_type body;
-  body.open(decoded.c_str(), beast::file_mode::scan, ec);
+  body.open(path.c_str(), beast::file_mode::scan, ec);
 
   if (ec == beast::errc::no_such_file_or_directory) {
     return std::nullopt;
@@ -171,7 +153,7 @@ std::optional<web_server::http_res_t> serve_static_file(
   }
 
   auto const size = body.size();
-  auto const content_type = mime_type(decoded);
+  auto const content_type = mime_type(path);
 
   if (req.method() == http::verb::head) {
     auto res = empty_response(req, http::status::ok, content_type);
