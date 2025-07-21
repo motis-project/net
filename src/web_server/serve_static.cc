@@ -86,6 +86,19 @@ std::optional<web_server::http_res_t> handle_directory_redirect(
   return std::nullopt;
 }
 
+bool is_file_in_directory(fs::path const& root, fs::path const& file) {
+  try {
+    auto canonical_root = fs::canonical(root);
+    auto canonical_file = fs::canonical(file);
+    auto relative_path = canonical_file.lexically_relative(canonical_root);
+    return !relative_path.empty() &&
+           !relative_path.native().starts_with(fs::path("..").native());
+  } catch (fs::filesystem_error const&) {
+    // e.g. file not found
+    return false;
+  }
+}
+
 std::optional<web_server::http_res_t> serve_static_file(
     fs::path const& doc_root, web_server::http_req_t const& req) {
   if (req.method() != http::verb::get && req.method() != http::verb::head) {
@@ -107,6 +120,10 @@ std::optional<web_server::http_res_t> serve_static_file(
   }
   if (url_path.back() == '/') {
     path /= "index.html";
+  }
+
+  if (!is_file_in_directory(doc_root, path)) {
+    return std::nullopt;
   }
 
   if (auto res = handle_directory_redirect(path, req, url); res.has_value()) {
