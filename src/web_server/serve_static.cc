@@ -1,5 +1,6 @@
 #include "net/web_server/serve_static.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <string_view>
 
@@ -86,6 +87,11 @@ std::optional<web_server::http_res_t> handle_directory_redirect(
   return std::nullopt;
 }
 
+bool is_file_in_directory(fs::path const& root, fs::path const& file) {
+  auto const rel = fs::relative(file, root);
+  return !rel.empty() && rel.native()[0] != '.';
+}
+
 std::optional<web_server::http_res_t> serve_static_file(
     fs::path const& doc_root, web_server::http_req_t const& req) {
   if (req.method() != http::verb::get && req.method() != http::verb::head) {
@@ -98,13 +104,19 @@ std::optional<web_server::http_res_t> serve_static_file(
   auto path = doc_root;
   for (auto const& seg : url.segments()) {
     if (seg.empty() || seg == "." || seg == ".." ||
-        seg.find(":") != std::string::npos) {
+        seg.find(":") != std::string::npos ||
+        seg.find("/") != std::string::npos ||
+        seg.find("\\") != std::string::npos) {
       return bad_request_response(req, "Invalid target");
     }
     path /= std::u8string{seg.begin(), seg.end()};
   }
   if (url_path.back() == '/') {
     path /= "index.html";
+  }
+
+  if (!is_file_in_directory(doc_root, path)) {
+    return std::nullopt;
   }
 
   if (auto res = handle_directory_redirect(path, req, url); res.has_value()) {
