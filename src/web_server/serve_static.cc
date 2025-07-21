@@ -1,5 +1,6 @@
 #include "net/web_server/serve_static.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <string_view>
 
@@ -90,9 +91,11 @@ bool is_file_in_directory(fs::path const& root, fs::path const& file) {
   try {
     auto canonical_root = fs::canonical(root);
     auto canonical_file = fs::canonical(file);
-    auto relative_path = canonical_file.lexically_relative(canonical_root);
-    return !relative_path.empty() &&
-           !relative_path.native().starts_with(fs::path("..").native());
+
+    auto const mismatch_pair =
+        std::mismatch(canonical_file.begin(), canonical_file.end(),
+                      canonical_root.begin(), canonical_root.end());
+    return mismatch_pair.second == canonical_root.end();
   } catch (fs::filesystem_error const&) {
     // e.g. file not found
     return false;
