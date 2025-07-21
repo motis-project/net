@@ -88,18 +88,8 @@ std::optional<web_server::http_res_t> handle_directory_redirect(
 }
 
 bool is_file_in_directory(fs::path const& root, fs::path const& file) {
-  try {
-    auto canonical_root = fs::canonical(root);
-    auto canonical_file = fs::canonical(file);
-
-    auto const mismatch_pair =
-        std::mismatch(canonical_file.begin(), canonical_file.end(),
-                      canonical_root.begin(), canonical_root.end());
-    return mismatch_pair.second == canonical_root.end();
-  } catch (fs::filesystem_error const&) {
-    // e.g. file not found
-    return false;
-  }
+  auto const rel = fs::relative(file, root);
+  return !rel.empty() && rel.native()[0] != '.';
 }
 
 std::optional<web_server::http_res_t> serve_static_file(
