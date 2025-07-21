@@ -98,7 +98,9 @@ std::optional<web_server::http_res_t> serve_static_file(
   auto path = doc_root;
   for (auto const& seg : url.segments()) {
     if (seg.empty() || seg == "." || seg == ".." ||
-        seg.find(":") != std::string::npos) {
+        seg.find(":") != std::string::npos ||
+        seg.find("/") != std::string::npos ||
+        seg.find("\\") != std::string::npos) {
       return bad_request_response(req, "Invalid target");
     }
     path /= std::u8string{seg.begin(), seg.end()};
