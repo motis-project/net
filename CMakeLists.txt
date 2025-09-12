@@ -50,6 +50,20 @@ if(MSVC)
   target_compile_definitions(web-server-tls PUBLIC _WIN32_WINNT=0x0601)
 endif()
 
+add_library(lb src/lb.cc src/base64.cc)
+target_compile_features(lb PUBLIC cxx_std_23)
+target_link_libraries(lb
+        ${CMAKE_THREAD_LIBS_INIT}
+        web-server
+        ssl
+        crypto
+)
+target_include_directories(lb SYSTEM PUBLIC include)
+if(MSVC)
+  set_target_properties(lb PROPERTIES COMPILE_FLAGS "/bigobj")
+  target_compile_definitions(lb PUBLIC _WIN32_WINNT=0x0601)
+endif()
+
 file(GLOB_RECURSE wss-client-src src/wss_client.cc)
 add_library(wss-client ${wss-client-src})
 target_compile_features(wss-client PUBLIC cxx_std_17)
