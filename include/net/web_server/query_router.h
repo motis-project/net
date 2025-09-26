@@ -15,7 +15,7 @@
 #include "boost/json.hpp"
 #include "boost/url.hpp"
 
-#include "openapi/missing_param_exception.h"
+#include "openapi/bad_request_exception.h"
 
 #include "net/base64.h"
 #include "net/web_server/content_encoding.h"
@@ -253,12 +253,11 @@ struct query_router {
           reply rep;
           try {
             rep = route->request_handler_(r, is_ssl);
-          } catch (openapi::missing_param_exception const& e) {
+          } catch (openapi::bad_request_exception const& e) {
             using namespace boost::json;
             rep = bad_request_response(
-                r,
-                serialize(value{{"error", fmt::format("missing parameter: {}",
-                                                      e.param_)}}));
+                r, serialize(value{
+                       {"error", fmt::format("bad request: {}", e.message_)}}));
           } catch (std::exception const& e) {
             using namespace boost::json;
             rep =
