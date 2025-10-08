@@ -1,4 +1,5 @@
 #include <iostream>
+#include "boost/asio/io_context.hpp"
 #include "net/http/client/https_client.h"
 
 using namespace net::http::client;
@@ -29,7 +30,7 @@ int main(int argc, char* argv[]) {
   // Boost Asio IO Service object
   // Represents an 'event loop' for asynchronous Input/Output operations
   // (such as networking or timers)
-  boost::asio::io_service ios;
+  boost::asio::io_context ios;
 
   // Request:
   // URL     [mandatory, i.e. "http://www.google.de"]

@@ -16,7 +16,7 @@ public:
   typedef std::shared_ptr<ssl> ssl_ptr;
   typedef std::function<void(ssl_ptr, boost::system::error_code)> connect_cb;
 
-  ssl(boost::asio::io_service& io_service, std::string host, std::string port,
+  ssl(boost::asio::io_context& io_context, std::string host, std::string port,
       boost::posix_time::time_duration const& timeout);
 
   ~ssl();

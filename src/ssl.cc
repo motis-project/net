@@ -4,12 +4,12 @@
 
 namespace net {
 
-ssl::ssl(boost::asio::io_service& io_service, std::string host,
+ssl::ssl(boost::asio::io_context& io_context, std::string host,
          std::string port, boost::posix_time::time_duration const& timeout)
     : ctx_(boost::asio::ssl::context::sslv23),
-      resolver_(io_service),
-      socket_(io_service, ctx_),
-      req_timeout_timer_(io_service, timeout),
+      resolver_(io_context),
+      socket_(io_context, ctx_),
+      req_timeout_timer_(io_context, timeout),
       host_(std::move(host)),
       port_(std::move(port)),
       connected_(false) {

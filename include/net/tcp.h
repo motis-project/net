@@ -15,10 +15,10 @@ public:
   typedef std::shared_ptr<tcp> tcp_ptr;
   typedef std::function<void(tcp_ptr, boost::system::error_code)> connect_cb;
 
-  tcp(boost::asio::io_service&, std::string host, std::string port,
+  tcp(boost::asio::io_context&, std::string host, std::string port,
       boost::posix_time::time_duration const& timeout);
 
-  tcp(boost::asio::io_service&, std::string host, std::string port);
+  tcp(boost::asio::io_context&, std::string host, std::string port);
 
   virtual ~tcp();
 
