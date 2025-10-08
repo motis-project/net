@@ -27,7 +27,7 @@ namespace net {
 
 struct wss_client::impl : public boost::asio::coroutine,
                           public std::enable_shared_from_this<impl> {
-  impl(asio::io_service& ios, asio::ssl::context& ctx, std::string host,
+  impl(asio::io_context& ios, asio::ssl::context& ctx, std::string host,
        std::string port)
       : resolve_{ios},
         ws_{ios, ctx},
@@ -150,7 +150,7 @@ struct wss_client::impl : public boost::asio::coroutine,
   bool send_active_{false};
 };
 
-wss_client::wss_client(asio::io_service& ios, asio::ssl::context& ctx,
+wss_client::wss_client(asio::io_context& ios, asio::ssl::context& ctx,
                        std::string const& host, std::string const& port)
     : impl_{std::make_shared<impl>(ios, ctx, host, port)} {}
 

@@ -7,7 +7,7 @@
 #include <string>
 
 #include "boost/asio/coroutine.hpp"
-#include "boost/asio/io_service.hpp"
+#include "boost/asio/io_context.hpp"
 #include "boost/asio/streambuf.hpp"
 #include "boost/date_time/posix_time/posix_time_types.hpp"
 #include "boost/system/error_code.hpp"
@@ -37,7 +37,7 @@ public:
                              boost::system::error_code)>
       callback;
 
-  smtp_client(boost::asio::io_service& ios, std::string host, std::string port,
+  smtp_client(boost::asio::io_context& ios, std::string host, std::string port,
               std::string hostname,
               boost::posix_time::time_duration timeout = TIMEOUT);
 

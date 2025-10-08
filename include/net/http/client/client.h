@@ -33,7 +33,7 @@ public:
       callback;
 
   basic_http_client(
-      boost::asio::io_service& ios, url const& u,
+      boost::asio::io_context& ios, url const& u,
       boost::posix_time::time_duration const& timeout = DEFAULT_TIMEOUT);
 
   void query(request& req, callback cb);

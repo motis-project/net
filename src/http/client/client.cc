@@ -19,7 +19,7 @@ static boost::regex const chunk_size_rx("\r?\n?[0-9a-fA-F]+\r\n");
 
 template <typename C>
 basic_http_client<C>::basic_http_client(
-    asio::io_service& ios, url const& u,
+    asio::io_context& ios, url const& u,
     boost::posix_time::time_duration const& timeout)
     : C(ios, u.host(), u.port(), timeout),
       response_stream_(&buf_),

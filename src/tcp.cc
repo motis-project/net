@@ -4,7 +4,7 @@ namespace asio = boost::asio;
 
 namespace net {
 
-tcp::tcp(asio::io_service& ios, std::string host, std::string port,
+tcp::tcp(asio::io_context& ios, std::string host, std::string port,
          boost::posix_time::time_duration const& timeout)
     : resolver_(ios),
       socket_(ios),
@@ -14,7 +14,7 @@ tcp::tcp(asio::io_service& ios, std::string host, std::string port,
       use_timeout_(true),
       connected_(false) {}
 
-tcp::tcp(asio::io_service& ios, std::string host, std::string port)
+tcp::tcp(asio::io_context& ios, std::string host, std::string port)
     : resolver_(ios),
       socket_(ios),
       req_timeout_timer_(ios),

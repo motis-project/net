@@ -102,7 +102,7 @@ class tcp_server : public std::enable_shared_from_this<tcp_server> {
   };
 
 public:
-  tcp_server(boost::asio::io_service& ios)
+  tcp_server(boost::asio::io_context& ios)
       : active_(false), ios_(ios), acceptor_(ios) {}
 
   void listen(std::string const& address, std::string const& port,
@@ -167,13 +167,13 @@ private:
   }
 
   bool active_;
-  boost::asio::io_service& ios_;
+  boost::asio::io_context& ios_;
   boost::asio::ip::tcp::acceptor acceptor_;
   handler_fun handler_;
   std::vector<std::weak_ptr<client>> clients_;
 };
 
-std::shared_ptr<tcp_server> make_server(boost::asio::io_service& ios) {
+std::shared_ptr<tcp_server> make_server(boost::asio::io_context& ios) {
   return std::make_shared<tcp_server>(ios);
 }
 

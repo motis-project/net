@@ -8,7 +8,7 @@ namespace asio = boost::asio;
 
 namespace net {
 
-stomp_client::stomp_client(boost::asio::io_service& ios, std::string host,
+stomp_client::stomp_client(boost::asio::io_context& ios, std::string host,
                            std::string port, std::string destination)
     : net::tcp(ios, std::move(host), std::move(port),
                boost::posix_time::seconds(10)),

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 
-#include "boost/asio/io_service.hpp"
+#include "boost/asio/io_context.hpp"
 #include "boost/asio/ssl.hpp"
 
 #include "net/wss_client.h"
@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  boost::asio::io_service ios;
+  boost::asio::io_context ios;
 
   boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
   boost::system::error_code ignore;

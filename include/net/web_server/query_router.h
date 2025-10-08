@@ -11,6 +11,7 @@
 #include "utl/overloaded.h"
 #include "utl/verify.h"
 
+#include "boost/asio/post.hpp"
 #include "boost/fiber/buffered_channel.hpp"
 #include "boost/json.hpp"
 #include "boost/url.hpp"
@@ -69,26 +70,29 @@ struct asio_exec {
   asio_exec(boost::asio::io_context& io, boost::asio::io_context& worker_pool);
 
   void exec(auto&& f, web_server::http_res_cb_t cb) {
-    worker_pool_.post([&, f = std::move(f), cb = std::move(cb)]() mutable {
-      try {
-        auto res = std::make_shared<web_server::http_res_t>(f());
-        io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
-          cb(std::move(*res));
-        });
-      } catch (...) {
-        std::cerr << "UNEXPECTED EXCEPTION\n";
+    boost::asio::post(
+        worker_pool_, [&, f = std::move(f), cb = std::move(cb)]() mutable {
+          try {
+            auto res = std::make_shared<web_server::http_res_t>(f());
+            boost::asio::post(
+                io_, [cb = std::move(cb), res = std::move(res)]() mutable {
+                  cb(std::move(*res));
+                });
+          } catch (...) {
+            std::cerr << "UNEXPECTED EXCEPTION\n";
 
-        auto str = web_server::string_res_t{
-            boost::beast::http::status::internal_server_error, 11};
-        str.body() = "error";
-        str.prepare_payload();
+            auto str = web_server::string_res_t{
+                boost::beast::http::status::internal_server_error, 11};
+            str.body() = "error";
+            str.prepare_payload();
 
-        auto res = std::make_shared<web_server::http_res_t>(str);
-        io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
-          cb(std::move(*res));
+            auto res = std::make_shared<web_server::http_res_t>(str);
+            boost::asio::post(
+                io_, [cb = std::move(cb), res = std::move(res)]() mutable {
+                  cb(std::move(*res));
+                });
+          }
         });
-      }
-    });
   }
 
   boost::asio::io_context& io_;
@@ -105,18 +109,20 @@ struct fiber_exec {
     auto const result =
         ch_.try_push([&, f = std::move(f), cb = std::move(cb)]() {
           auto res = std::make_shared<net::web_server::http_res_t>(f());
-          io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
-            cb(std::move(*res));
-          });
+          boost::asio::post(
+              io_, [cb = std::move(cb), res = std::move(res)]() mutable {
+                cb(std::move(*res));
+              });
         });
     if (result == boost::fibers::channel_op_status::full) {
       auto str = web_server::string_res_t{
           boost::beast::http::status::too_many_requests, 11};
       str.prepare_payload();
       auto res = std::make_shared<web_server::http_res_t>(str);
-      io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
-        cb(std::move(*res));
-      });
+      boost::asio::post(io_,
+                        [cb = std::move(cb), res = std::move(res)]() mutable {
+                          cb(std::move(*res));
+                        });
     } else if (result != boost::fibers::channel_op_status::success) {
       auto str = web_server::string_res_t{
           boost::beast::http::status::internal_server_error, 11};
@@ -126,9 +132,10 @@ struct fiber_exec {
               result));
       str.prepare_payload();
       auto res = std::make_shared<web_server::http_res_t>(str);
-      io_.post([cb = std::move(cb), res = std::move(res)]() mutable {
-        cb(std::move(*res));
-      });
+      boost::asio::post(io_,
+                        [cb = std::move(cb), res = std::move(res)]() mutable {
+                          cb(std::move(*res));
+                        });
     }
   }
 

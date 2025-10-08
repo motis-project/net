@@ -7,13 +7,13 @@
 #include "boost/system/error_code.hpp"
 
 #include "boost/asio/coroutine.hpp"
-#include "boost/asio/io_service.hpp"
+#include "boost/asio/io_context.hpp"
 #include "boost/asio/ssl/context.hpp"
 
 namespace net {
 
 struct wss_client {
-  wss_client(boost::asio::io_service& ios, boost::asio::ssl::context& ctx,
+  wss_client(boost::asio::io_context& ios, boost::asio::ssl::context& ctx,
              std::string const& host, std::string const& port);
   ~wss_client();
 

@@ -20,7 +20,7 @@ public:
                              boost::system::error_code)>
       callback;
 
-  stomp_client(boost::asio::io_service& ios, std::string host, std::string port,
+  stomp_client(boost::asio::io_context& ios, std::string host, std::string port,
                std::string destination);
 
   void subscribe(callback bail_out, std::function<void(std::string)> on_msg);

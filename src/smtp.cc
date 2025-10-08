@@ -19,7 +19,7 @@ using boost::system::error_code;
 
 namespace net {
 
-smtp_client::smtp_client(asio::io_service& ios, std::string host,
+smtp_client::smtp_client(asio::io_context& ios, std::string host,
                          std::string port, std::string hostname,
                          boost::posix_time::time_duration timeout)
     : net::ssl(ios, std::move(host), std::move(port), std::move(timeout)),
