@@ -44,7 +44,7 @@ struct web_server::impl {
   void init(std::string const& host, std::string const& port,
             boost::system::error_code& ec) {
     asio::ip::tcp::resolver resolver{ioc_};
-    asio::ip::tcp::endpoint const endpoint = *resolver.resolve({host, port});
+    asio::ip::tcp::endpoint const endpoint = *resolver.resolve(host, port).begin();
 
     acceptor_.open(endpoint.protocol(), ec);
     if (ec) {

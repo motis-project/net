@@ -7,8 +7,7 @@
 namespace net {
 
 struct lb {
-  lb(boost::asio::io_context&,
-     std::string const& url,
+  lb(boost::asio::io_context&, std::string const& url,
      web_server::http_req_cb_t);
   lb(lb&&);
   lb& operator=(lb&&);
