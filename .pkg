@@ -8,12 +8,12 @@
   commit=d68e1d908e789c31c1f2fafe4bd8e09cb91e21c5
 [boost]
   url=git@github.com:motis-project/boost.git
-  branch=master
-  commit=082a2d83c827e43f3b7eb8d6f0a1102cddb897ad
+  branch=boost-1.89.0
+  commit=014fd3e9397cc84e16177f5187d6aa2180a9ddc2
 [utl]
   url=git@github.com:motis-project/utl.git
   branch=master
-  commit=8c61dcaa74a7f49695d58ce7aae9de7ecb566aa1
+  commit=a63d8c1822293b8f18dc0418905c3c21067aa051
 [openapi-cpp]
   url=git@github.com:triptix-tech/openapi-cpp.git
   branch=master
