@@ -277,7 +277,7 @@ struct query_router {
             using namespace boost::json;
             rep = server_error_response(
                 r,
-                serialize(value{{"status", 500}, {"message", "Unkown error"}}));
+                serialize(value{{"status", 500}, {"message", "Unknown error"}}));
           }
           if (reply_hook_) {
             try {
