@@ -17,6 +17,7 @@
 #include "boost/url.hpp"
 
 #include "openapi/bad_request_exception.h"
+#include "openapi/not_found_exception.h"
 
 #include "net/base64.h"
 #include "net/web_server/content_encoding.h"
@@ -263,14 +264,20 @@ struct query_router {
           } catch (openapi::bad_request_exception const& e) {
             using namespace boost::json;
             rep = bad_request_response(
-                r, serialize(value{
-                       {"error", fmt::format("bad request: {}", e.message_)}}));
+                r, serialize(value{{"status", 400}, {"message", e.what()}}));
+          } catch (openapi::not_found_exception const& e) {
+            using namespace boost::json;
+            rep = not_found_response(
+                r, serialize(value{{"status", 404}, {"message", e.what()}}));
           } catch (std::exception const& e) {
             using namespace boost::json;
-            rep =
-                server_error_response(r, serialize(value{{"error", e.what()}}));
+            rep = server_error_response(
+                r, serialize(value{{"status", 500}, {"message", e.what()}}));
           } catch (...) {
-            rep = reply{server_error_response(r)};
+            using namespace boost::json;
+            rep = server_error_response(
+                r,
+                serialize(value{{"status", 500}, {"message", "Unkown error"}}));
           }
           if (reply_hook_) {
             try {
