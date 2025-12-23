@@ -261,23 +261,23 @@ struct query_router {
           reply rep;
           try {
             rep = route->request_handler_(r, is_ssl);
-          } catch (net::bad_request_exception const& e) {
+          } catch (openapi::bad_request_exception const& e) {
             using namespace boost::json;
             rep = bad_request_response(
-                r, serialize(value{{"status", 400}, {"message", e.what()}}));
+                r, serialize(value{{"status", 400}, {"error", e.what()}}));
           } catch (net::not_found_exception const& e) {
             using namespace boost::json;
             rep = not_found_response(
-                r, serialize(value{{"status", 404}, {"message", e.what()}}));
+                r, serialize(value{{"status", 404}, {"error", e.what()}}));
           } catch (std::exception const& e) {
             using namespace boost::json;
             rep = server_error_response(
-                r, serialize(value{{"status", 500}, {"message", e.what()}}));
+                r, serialize(value{{"status", 500}, {"error", e.what()}}));
           } catch (...) {
             using namespace boost::json;
             rep = server_error_response(
                 r, serialize(
-                       value{{"status", 500}, {"message", "Unknown error"}}));
+                       value{{"status", 500}, {"error", "Unknown error"}}));
           }
           if (reply_hook_) {
             try {
