@@ -17,9 +17,9 @@
 #include "boost/url.hpp"
 
 #include "openapi/bad_request_exception.h"
-#include "openapi/not_found_exception.h"
 
 #include "net/base64.h"
+#include "net/not_found_exception.h"
 #include "net/web_server/content_encoding.h"
 #include "net/web_server/enable_cors.h"
 #include "net/web_server/responses.h"
@@ -261,11 +261,11 @@ struct query_router {
           reply rep;
           try {
             rep = route->request_handler_(r, is_ssl);
-          } catch (openapi::bad_request_exception const& e) {
+          } catch (net::bad_request_exception const& e) {
             using namespace boost::json;
             rep = bad_request_response(
                 r, serialize(value{{"status", 400}, {"message", e.what()}}));
-          } catch (openapi::not_found_exception const& e) {
+          } catch (net::not_found_exception const& e) {
             using namespace boost::json;
             rep = not_found_response(
                 r, serialize(value{{"status", 404}, {"message", e.what()}}));
@@ -276,8 +276,8 @@ struct query_router {
           } catch (...) {
             using namespace boost::json;
             rep = server_error_response(
-                r,
-                serialize(value{{"status", 500}, {"message", "Unknown error"}}));
+                r, serialize(
+                       value{{"status", 500}, {"message", "Unknown error"}}));
           }
           if (reply_hook_) {
             try {
