@@ -40,6 +40,13 @@ web_server::string_res_t bad_request_response(
   return string_response(req, text, http::status::bad_request, content_type);
 }
 
+web_server::string_res_t unprocessable_entity_response(
+    web_server::http_req_t const& req, std::string_view const text,
+    std::string_view const content_type) {
+  return string_response(req, text, http::status::unprocessable_entity,
+                         content_type);
+}
+
 web_server::empty_res_t empty_response(web_server::http_req_t const& req,
                                        boost::beast::http::status status,
                                        std::string_view const content_type) {
