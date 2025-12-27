@@ -18,7 +18,10 @@
 
 #include "openapi/bad_request_exception.h"
 
+#include "net/bad_request_exception.h"
 #include "net/base64.h"
+#include "net/not_found_exception.h"
+#include "net/too_many_exception.h"
 #include "net/web_server/content_encoding.h"
 #include "net/web_server/enable_cors.h"
 #include "net/web_server/responses.h"
@@ -258,19 +261,26 @@ struct query_router {
     return exec_.exec(
         [this, route, is_ssl, r = std::move(route_req)]() {
           reply rep;
+          using namespace boost::json;
           try {
             rep = route->request_handler_(r, is_ssl);
           } catch (openapi::bad_request_exception const& e) {
-            using namespace boost::json;
-            rep = bad_request_response(
-                r, serialize(value{
-                       {"error", fmt::format("bad request: {}", e.message_)}}));
+            rep =
+                bad_request_response(r, serialize(value{{"error", e.what()}}));
+          } catch (net::not_found_exception const& e) {
+            rep = not_found_response(r, serialize(value{{"error", e.what()}}));
+          } catch (net::bad_request_exception const& e) {
+            rep =
+                bad_request_response(r, serialize(value{{"error", e.what()}}));
+          } catch (net::too_many_exception const& e) {
+            rep = unprocessable_entity_response(
+                r, serialize(value{{"error", e.what()}}));
           } catch (std::exception const& e) {
-            using namespace boost::json;
             rep =
                 server_error_response(r, serialize(value{{"error", e.what()}}));
           } catch (...) {
-            rep = reply{server_error_response(r)};
+            rep = server_error_response(
+                r, serialize(value{{"error", "Unknown error"}}));
           }
           if (reply_hook_) {
             try {

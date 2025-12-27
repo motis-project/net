@@ -27,6 +27,11 @@ web_server::string_res_t bad_request_response(
     web_server::http_req_t const& req, std::string_view text = "Bad request",
     std::string_view content_type = "application/json");
 
+web_server::string_res_t unprocessable_entity_response(
+    web_server::http_req_t const& req,
+    std::string_view text = "Unprocessable entity",
+    std::string_view content_type = "application/json");
+
 web_server::empty_res_t empty_response(
     web_server::http_req_t const& req,
     boost::beast::http::status status = boost::beast::http::status::ok,
