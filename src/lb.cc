@@ -25,7 +25,9 @@
 #include "boost/url.hpp"
 
 #include "utl/overloaded.h"
+#include "utl/parser/arg_parser.h"
 #include "utl/verify.h"
+#include "utl/visit.h"
 
 #include "net/base64.h"
 
@@ -38,23 +40,50 @@ using namespace boost::asio;
 
 namespace net {
 
-std::pair<web_server::http_req_t, std::int64_t> to_beast_request(
-    json::value const& v) {
-  auto ret = std::pair<web_server::http_req_t, std::int64_t>{};
-  auto& [req, id] = ret;
-  id = v.at("id").get_int64();
-  req.version(11);
-  req.method(http::string_to_verb(v.at("method").as_string()));
-  req.target(v.at("uri").as_string());
-  for (auto const& [key, value] : v.at("headers").as_object()) {
-    req.set(key, value.as_string());
+std::optional<web_server::http_req_t> parse_request(
+    std::string_view raw, boost::beast::error_code& ec) {
+  auto parser = http::request_parser<http::string_body>{};
+  parser.eager(true);
+
+  auto const n = parser.put(boost::asio::buffer(raw.data(), raw.size()), ec);
+
+  if (ec) {
+    return std::nullopt;
   }
-  auto const& body = v.at("body");
-  if (body.is_string()) {
-    req.body() = decode_base64(std::string{body.as_string()});
+
+  if (!parser.is_done()) {
+    ec = http::error::need_more;
+    return std::nullopt;
   }
-  req.prepare_payload();
-  return ret;
+
+  return parser.release();
+}
+
+template <bool isRequest, class Body, class Fields>
+std::string to_str(http::message<isRequest, Body, Fields>& msg) {
+  msg.prepare_payload();
+
+  auto ec = boost::beast::error_code{};
+  auto out = std::string{};
+  auto serializer = http::serializer<isRequest, Body, Fields>{msg};
+  while (!serializer.is_done()) {
+    serializer.next(
+        ec, [&](boost::beast::error_code& ec2, auto const& buffers) {
+          ec2 = {};
+          for (auto it = boost::asio::buffer_sequence_begin(buffers);
+               it != boost::asio::buffer_sequence_end(buffers); ++it) {
+            auto b = *it;
+            out.append(static_cast<char const*>(b.data()), b.size());
+          }
+          serializer.consume(boost::asio::buffer_size(buffers));
+        });
+
+    if (ec) {
+      throw boost::system::system_error(ec);
+    }
+  }
+
+  return out;
 }
 
 json::value to_json_response(std::int64_t const id,
@@ -129,13 +158,14 @@ struct lb::impl {
             [](bool preverified, ssl::verify_context& ctx) { return true; });
 
         co_await websocket_client_session();
-      } catch (...) {
+      } catch (std::exception const& e) {
+        std::cout << "web socket lb error: " << e.what() << std::endl;
       }
       fmt::println("websocket {} disconnected, reconnecting in 1s", url_);
       std::this_thread::sleep_for(std::chrono::seconds{1});
       ws_.reset();
       write_in_progress_ = false;
-      write_queue_ = std::queue<std::string>{};
+      write_queue_ = std::queue<web_server::http_res_t>{};
     }
   }
 
@@ -187,6 +217,7 @@ struct lb::impl {
       auto host_port = host + ':' + std::to_string(ep.port());
       co_await ws_->async_handshake(host_port, path, use_awaitable);
 
+      std::cout << "LB " << host_port << ", awaiting requests." << std::endl;
       while (true) {
         auto buffer = boost::beast::multi_buffer{};
         co_await ws_->async_read(buffer, use_awaitable);
@@ -206,10 +237,16 @@ struct lb::impl {
     write_in_progress_ = true;
 
     while (!write_queue_.empty() && ws_) {
-      auto message = std::move(write_queue_.front());
+      auto const message = std::visit(
+          [](auto&& x) {
+            x.prepare_payload();
+            return to_str(x);
+          },
+          write_queue_.front());
       write_queue_.pop();
 
       try {
+        ws_->binary(true);
         auto const bytes_written =
             co_await ws_->async_write(buffer(message), use_awaitable);
       } catch (std::exception const& e) {
@@ -221,7 +258,7 @@ struct lb::impl {
     write_in_progress_ = false;
   }
 
-  void queue_write(std::string message) {
+  void queue_write(web_server::http_res_t message) {
     write_queue_.push(std::move(message));
     if (!write_in_progress_) {
       co_spawn(ioc_, process_write_queue(), detached);
@@ -230,21 +267,33 @@ struct lb::impl {
 
   awaitable<void> process_http_request(std::string ws_msg) {
     try {
-      auto const [req, id] = to_beast_request(json::parse(ws_msg));
+      auto ec = boost::system::error_code{};
+      auto req = parse_request(ws_msg, ec);
+      utl::verify(req.has_value(), "Unable to parse request: {:?} [size={}]",
+                  ws_msg.substr(0U, std::min(ws_msg.size(), std::size_t{200U})),
+                  ws_msg.size());
+
+      auto const id_str = req->at("x-request-id");
+      auto const id =
+          utl::parse_verify<unsigned>({id_str.data(), id_str.size()});
 
       // Call the HTTP request handler
       http_callback_(
-          std::move(req),
+          std::move(*req),
           [this, id](web_server::http_res_t&& response) {
+            std::visit(
+                [&](auto& res) { res.set("x-request-id", fmt::to_string(id)); },
+                response);
             try {
-              queue_write(std::move(
-                  json::serialize(to_json_response(id, std::move(response)))));
+              queue_write(std::move(response));
             } catch (std::exception const& e) {
               std::cerr << "Error preparing response for ID " << id << ": "
                         << e.what() << std::endl;
             }
           },
           false);
+    } catch (std::out_of_range) {
+      std::cerr << "Request without x-request-id header" << std::endl;
     } catch (std::exception const& e) {
       std::cerr << "Error processing HTTP request: " << e.what() << std::endl;
     }
@@ -253,7 +302,7 @@ struct lb::impl {
 
   io_context& ioc_;
   strand<io_context::executor_type> write_strand_{make_strand(ioc_)};
-  std::queue<std::string> write_queue_;
+  std::queue<web_server::http_res_t> write_queue_;
   bool write_in_progress_{false};
   std::string url_;
   web_server::http_req_cb_t http_callback_;
