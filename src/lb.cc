@@ -271,9 +271,10 @@ struct lb::impl {
         co_return;
       }
     }
-#endif
-
+#else
     std::cerr << "WARNING: LOAD AVG TIMER ONLY IMPLEMENTED FOR LINUX\n";
+    co_return;
+#endif
   }
 
   awaitable<void> process_write_queue() {
