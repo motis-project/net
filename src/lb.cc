@@ -1,5 +1,7 @@
 #include "net/lb.h"
 
+#include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <memory>
@@ -9,11 +11,17 @@
 #include <unordered_map>
 #include <vector>
 
+#if defined(__linux__)
+#include <unistd.h>
+#endif
+
 #include "boost/asio/co_spawn.hpp"
 #include "boost/asio/connect.hpp"
 #include "boost/asio/detached.hpp"
 #include "boost/asio/ip/tcp.hpp"
+#include "boost/asio/redirect_error.hpp"
 #include "boost/asio/ssl.hpp"
+#include "boost/asio/steady_timer.hpp"
 #include "boost/asio/strand.hpp"
 #include "boost/asio/use_awaitable.hpp"
 #include "boost/beast/core.hpp"
@@ -39,6 +47,10 @@ namespace ssl = boost::asio::ssl;
 using namespace boost::asio;
 
 namespace net {
+
+using load_avg_t = unsigned;
+
+using queue_entry_t = std::variant<load_avg_t, web_server::http_res_t>;
 
 std::optional<web_server::http_req_t> parse_request(
     std::string_view raw, boost::beast::error_code& ec) {
@@ -85,6 +97,12 @@ std::string to_str(http::message<isRequest, Body, Fields>& msg) {
 
   return out;
 }
+
+std::string to_str(web_server::http_res_t& x) {
+  return std::visit([](auto& x) { return to_str(x); }, x);
+}
+
+std::string to_str(load_avg_t const x) { return fmt::to_string(x); }
 
 json::value to_json_response(std::int64_t const id,
                              web_server::http_res_t&& http_res) {
@@ -139,7 +157,10 @@ struct lb::impl {
 
   ~impl() { stop(); }
 
-  void run() { co_spawn(ioc_, loop(), detached); }
+  void run() {
+    co_spawn(ioc_, loop(), detached);
+    co_spawn(ioc_, loadavg_timer_loop(), detached);
+  }
 
   void stop() {
     if (ws_) {
@@ -165,7 +186,7 @@ struct lb::impl {
       std::this_thread::sleep_for(std::chrono::seconds{1});
       ws_.reset();
       write_in_progress_ = false;
-      write_queue_ = std::queue<web_server::http_res_t>{};
+      write_queue_ = {};
     }
   }
 
@@ -229,6 +250,32 @@ struct lb::impl {
     }
   }
 
+  awaitable<void> loadavg_timer_loop() {
+#if defined(__linux__)
+    auto executor = co_await this_coro::executor;
+    auto timer = steady_timer{executor};
+    while (true) {
+      double loads[3];
+      if (getloadavg(loads, 1) == 1) {
+        auto const cores = std::thread::hardware_concurrency();
+        auto const pct = (loads[0] / static_cast<double>(cores)) * 100;
+        queue_write(static_cast<load_avg_t>(std::lround(pct)));
+      } else {
+        std::cerr << "UNABLE TO GET loadavg\n";
+      }
+
+      timer.expires_after(std::chrono::seconds{5});
+      auto ec = boost::system::error_code{};
+      co_await timer.async_wait(redirect_error(use_awaitable, ec));
+      if (ec == error::operation_aborted) {
+        co_return;
+      }
+    }
+#endif
+
+    std::cerr << "WARNING: LOAD AVG TIMER ONLY IMPLEMENTED FOR LINUX\n";
+  }
+
   awaitable<void> process_write_queue() {
     if (write_in_progress_ || write_queue_.empty() || !ws_) {
       co_return;
@@ -237,16 +284,12 @@ struct lb::impl {
     write_in_progress_ = true;
 
     while (!write_queue_.empty() && ws_) {
-      auto const message = std::visit(
-          [](auto&& x) {
-            x.prepare_payload();
-            return to_str(x);
-          },
-          write_queue_.front());
+      auto& msg = write_queue_.front();
+      auto const message = std::visit([](auto& x) { return to_str(x); }, msg);
+      ws_->binary(std::holds_alternative<web_server::http_res_t>(msg));
       write_queue_.pop();
 
       try {
-        ws_->binary(true);
         auto const bytes_written =
             co_await ws_->async_write(buffer(message), use_awaitable);
       } catch (std::exception const& e) {
@@ -258,7 +301,7 @@ struct lb::impl {
     write_in_progress_ = false;
   }
 
-  void queue_write(web_server::http_res_t message) {
+  void queue_write(queue_entry_t message) {
     write_queue_.push(std::move(message));
     if (!write_in_progress_) {
       co_spawn(ioc_, process_write_queue(), detached);
@@ -302,7 +345,7 @@ struct lb::impl {
 
   io_context& ioc_;
   strand<io_context::executor_type> write_strand_{make_strand(ioc_)};
-  std::queue<web_server::http_res_t> write_queue_;
+  std::queue<queue_entry_t> write_queue_;
   bool write_in_progress_{false};
   std::string url_;
   web_server::http_req_cb_t http_callback_;
