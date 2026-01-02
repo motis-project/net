@@ -16,7 +16,11 @@ struct lb {
   void run() const;
   void stop() const;
 
-  struct impl;
+  struct impl {
+    virtual ~impl();
+    virtual void run() = 0;
+    virtual void stop() = 0;
+  };
   std::unique_ptr<impl> impl_;
 };
 

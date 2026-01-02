@@ -47,7 +47,6 @@ namespace ssl = boost::asio::ssl;
 using namespace boost::asio;
 
 namespace net {
-
 using load_avg_t = unsigned;
 
 using queue_entry_t = std::variant<load_avg_t, web_server::http_res_t>;
@@ -104,65 +103,25 @@ std::string to_str(web_server::http_res_t& x) {
 
 std::string to_str(load_avg_t const x) { return fmt::to_string(x); }
 
-json::value to_json_response(std::int64_t const id,
-                             web_server::http_res_t&& http_res) {
-  return std::visit(
-      utl::overloaded{
-          [&](web_server::string_res_t&& r) {
-            auto obj = json::object{};
-            obj["id"] = id;
-            obj["status"] = static_cast<std::uint16_t>(r.result_int());
+using wss_stream = websocket::stream<ssl::stream<tcp::socket>>;
+using ws_stream = websocket::stream<tcp::socket>;
 
-            auto headers_obj = json::object{};
-            for (auto const& header : r) {
-              if (header.name() != http::field::connection) {
-                headers_obj[header.name_string()] = header.value();
-              }
-            }
-            obj["headers"] = std::move(headers_obj);
-            obj["body"] = encode_base64(r.body());
-
-            return obj;
-          },
-          [&](web_server::file_res_t&& r) {
-            auto const size = r.body().size();
-            auto body = std::string(size, '\0');
-            auto ec = boost::beast::error_code{};
-            auto const bytes_read =
-                r.body().file().read(body.data(), body.size(), ec);
-
-            auto obj = json::object{};
-            obj["id"] = id;
-            obj["status"] = static_cast<std::uint16_t>(r.result_int());
-            auto headers_obj = json::object{};
-            for (auto const& header : r) {
-              headers_obj[header.name_string()] = header.value();
-            }
-            obj["headers"] = std::move(headers_obj);
-            obj["body"] = encode_base64(std::move(body));
-
-            return obj;
-          },
-          [](web_server::empty_res_t&&) { return json::object{}; },
-          [](web_server::buffer_res_t&&) { return json::object{}; }},
-      std::move(http_res));
-}
-
-struct lb::impl {
-  impl(io_context& ioc, std::string const& url, web_server::http_req_cb_t cb)
+template <typename Stream>
+struct conn : public lb::impl {
+  conn(io_context& ioc, std::string const& url, web_server::http_req_cb_t cb)
       : ioc_{ioc},
         url_{url},
         http_callback_{std::move(cb)},
         ssl_ctx_{ssl::context::tls_client} {}
 
-  ~impl() { stop(); }
+  ~conn() override { stop(); }
 
-  void run() {
+  void run() override {
     co_spawn(ioc_, loop(), detached);
     co_spawn(ioc_, loadavg_timer_loop(), detached);
   }
 
-  void stop() {
+  void stop() override {
     if (ws_) {
       boost::system::error_code ec;
       ws_->close(websocket::close_code::normal, ec);
@@ -193,25 +152,32 @@ struct lb::impl {
   awaitable<void> websocket_client_session() {
     auto executor = co_await this_coro::executor;
 
+    constexpr auto const kDefaultPort =
+        std::is_same_v<Stream, wss_stream> ? "443" : "80";
+
+    auto url = boost::urls::url_view{url_};
+    auto host = std::string{url.host()};
+    auto port = url.has_port() ? std::string{url.port()} : kDefaultPort;
+    auto path = url.path().empty() ? "/"
+                                   : std::string{url.path()} + '?' +
+                                         (url.has_query() ? url.query() : "");
+
     try {
-      auto url = boost::urls::url_view(url_);
-      auto host = std::string(url.host());
-      auto port = url.has_port() ? std::string(url.port()) : "443";
-      auto path = url.path().empty() ? "/"
-                                     : std::string(url.path()) + '?' +
-                                           (url.has_query() ? url.query() : "");
-
       auto resolver = tcp::resolver{executor};
-      ws_ = std::make_unique<websocket::stream<ssl::stream<tcp::socket>>>(
-          executor, ssl_ctx_);
 
-      // Set SNI hostname (required for SSL)
-      if (!SSL_set_tlsext_host_name(ws_->next_layer().native_handle(),
-                                    host.c_str())) {
-        auto const ec =
-            boost::system::error_code{static_cast<int>(::ERR_get_error()),
-                                      boost::asio::error::get_ssl_category()};
-        throw boost::system::system_error{ec};
+      if constexpr (std::is_same_v<Stream, wss_stream>) {
+        ws_ = std::make_unique<Stream>(executor, ssl_ctx_);
+
+        // Set SNI hostname (required for SSL)
+        if (!SSL_set_tlsext_host_name(ws_->next_layer().native_handle(),
+                                      host.c_str())) {
+          auto const ec =
+              boost::system::error_code{static_cast<int>(::ERR_get_error()),
+                                        boost::asio::error::get_ssl_category()};
+          throw boost::system::system_error{ec};
+        }
+      } else {
+        ws_ = std::make_unique<Stream>(executor);
       }
 
       auto const results =
@@ -221,8 +187,10 @@ struct lb::impl {
       auto ep = co_await async_connect(boost::beast::get_lowest_layer(*ws_),
                                        results, use_awaitable);
 
-      co_await ws_->next_layer().async_handshake(ssl::stream_base::client,
-                                                 use_awaitable);
+      if constexpr (std::is_same_v<Stream, wss_stream>) {
+        co_await ws_->next_layer().async_handshake(ssl::stream_base::client,
+                                                   use_awaitable);
+      }
 
       // boost::beast::get_lowest_layer(*ws_).expires_never();  // TODO
 
@@ -246,7 +214,9 @@ struct lb::impl {
         co_spawn(executor, process_http_request(std::move(message)), detached);
       }
     } catch (std::exception const& e) {
-      std::cerr << "WebSocket session error: " << e.what() << std::endl;
+      fmt::println(
+          "LB session error, url={:?}, host={:?}, port={:?}, path={:?}: {}",
+          url_, host, port, path, e.what());
     }
   }
 
@@ -351,12 +321,18 @@ struct lb::impl {
   std::string url_;
   web_server::http_req_cb_t http_callback_;
   ssl::context ssl_ctx_;
-  std::unique_ptr<websocket::stream<ssl::stream<tcp::socket>>> ws_;
+  std::unique_ptr<Stream> ws_;
 };
 
-// Implementation of the lb class methods
+lb::impl::~impl() = default;
+
 lb::lb(io_context& ios, std::string const& url, web_server::http_req_cb_t cb)
-    : impl_(std::make_unique<impl>(ios, url, cb)) {}
+    : impl_(url.starts_with("wss://")
+                ? static_cast<impl*>(new conn<wss_stream>{ios, url, cb})
+                : static_cast<impl*>(new conn<ws_stream>{ios, url, cb})) {
+  utl::verify(url.starts_with("wss://") || url.starts_with("ws://"),
+              "invalid lbs url: {:?}", url);
+}
 
 lb::~lb() = default;
 
