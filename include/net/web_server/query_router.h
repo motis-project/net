@@ -240,9 +240,26 @@ struct query_router {
     auto const url = boost::urls::url_view{req.target()};
     auto const path = url.path();
 
+    auto const path_matches = [&](handler const& h) {
+      if (h.prefix_.empty()) {
+        return true;
+      }
+
+      if (h.prefix_.back() == '/') {
+        return path.starts_with(h.prefix_);
+      }
+
+      if (path == h.prefix_) {
+        return true;
+      }
+
+      return path.size() == h.prefix_.size() + 1U && path.back() == '/' &&
+             path.starts_with(h.prefix_);
+    };
+
     auto route = utl::find_if(routes_, [&](handler const& h) {
       return (h.method_ == "*" || h.method_ == req.method_string()) &&
-             path.starts_with(h.prefix_);
+             path_matches(h);
     });
 
     if (route == end(routes_)) {
