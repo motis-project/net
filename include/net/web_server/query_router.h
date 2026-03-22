@@ -184,12 +184,10 @@ struct query_router {
   }
 
   template <StringPostHandler Fn>
-  query_router& route(std::string method,
-                      std::string const& path_regex,
-                      Fn&& fn) {
-    return route(std::move(method), path_regex,
+  query_router& post(std::string const& path_regex, Fn&& fn) {
+    return route("POST", path_regex,
                  [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
-                                             bool is_ssl) -> reply {
+                                             bool is_ssl) {
                    auto [status, content] = fn(req.body());
                    auto res =
                        net::web_server::string_res_t{status, req.version()};
