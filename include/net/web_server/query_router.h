@@ -47,23 +47,25 @@ concept JSON =
     !std::is_same_v<T, std::string>;  // avoid ambiguity with string handlers
 
 template <typename T>
-concept ContentOnlyResponse =
-    !std::is_same_v<typename T::first_type, boost::beast::http::status>;
+concept StatusResponse =
+    std::is_same_v<typename T::first_type, boost::beast::http::status>;
+
+template <typename T>
+concept ContentOnlyResponse = !StatusResponse<T>;
 
 template <typename Fn>
-concept ContentOnlyGetHandler =
-    requires(Fn f, boost::urls::url_view const& url) {
-      { f(url) } -> std::same_as<std::string>;
-    } || requires(Fn f, boost::urls::url_view const& url) {
-      { f(url) } -> ContentOnlyResponse;
-      { f(url) } -> JSON;
-    };
+concept RespOnlyGetHandler = requires(Fn f, boost::urls::url_view const& url) {
+  { f(url) } -> std::same_as<std::string>;
+} || requires(Fn f, boost::urls::url_view const& url) {
+  { f(url) } -> ContentOnlyResponse;  // avoid amibuity with json handlers
+  { f(url) } -> JSON;
+};
 
 template <typename Fn>
-concept ContentOnlyPostHandler = requires(Fn f, std::string_view const& req) {
+concept RespOnlyPostHandler = requires(Fn f, std::string_view const& req) {
   { f(req) } -> std::same_as<std::string>;
 } || requires(Fn f, typename utl::first_argument<Fn> arg) {
-  { f(arg) } -> ContentOnlyResponse;
+  { f(arg) } -> ContentOnlyResponse;  // avoid ambiguity with json handlers
   { f(arg) } -> JSON;
 };
 
@@ -222,7 +224,7 @@ struct query_router {
                  });
   }
 
-  template <ContentOnlyGetHandler Fn>
+  template <RespOnlyGetHandler Fn>
   query_router& get(std::string const& path_regex, Fn&& fn) {
     return get(path_regex,
                [fn = std::forward<Fn>(fn)](boost::urls::url_view const& url) {
@@ -230,7 +232,7 @@ struct query_router {
                });
   }
 
-  template <ContentOnlyPostHandler Fn>
+  template <RespOnlyPostHandler Fn>
   query_router& post(std::string const& path_regex, Fn&& fn) {
     return post(path_regex, [fn = std::forward<Fn>(fn)](
                                 typename utl::first_argument<Fn> arg) {
