@@ -54,50 +54,34 @@ template <typename T>
 concept ContentOnlyResponse = !StatusResponse<T>;
 
 template <typename Fn>
-concept RespOnlyGetHandler = requires(Fn f, boost::urls::url_view const& url) {
-  { f(url) } -> std::same_as<std::string>;
-} || requires(Fn f, boost::urls::url_view const& url) {
-  { f(url) } -> ContentOnlyResponse;  // avoid amibuity with json handlers
-  { f(url) } -> JSON;
-};
-
-template <typename Fn>
-concept RespOnlyPostHandler = requires(Fn f, std::string_view const& req) {
-  { f(req) } -> std::same_as<std::string>;
-} || requires(Fn f, typename utl::first_argument<Fn> arg) {
-  { f(arg) } -> ContentOnlyResponse;  // avoid ambiguity with json handlers
+concept ContentOnlyHandler = requires(Fn f, utl::first_argument<Fn> arg) {
+  { f(arg) } -> std::same_as<std::string>;
+} || requires(Fn f, utl::first_argument<Fn> arg) {
+  { f(arg) } -> ContentOnlyResponse;  // avoid amibuity with json handlers
   { f(arg) } -> JSON;
 };
 
 template <typename Fn>
 concept StringGetHandler = requires(boost::urls::url_view const& url, Fn f) {
-  {
-    std::remove_cvref_t<boost::beast::http::status>(f(url).first)
-  } -> std::same_as<boost::beast::http::status>;
+  { f(url) } -> StatusResponse;
   { f(url).second } -> std::same_as<std::string>;
 };
 
 template <typename Fn>
 concept StringPostHandler = requires(std::string_view const& req, Fn f) {
-  {
-    std::remove_cvref_t<boost::beast::http::status>(f(req).first)
-  } -> std::same_as<boost::beast::http::status>;
+  { f(req) } -> StatusResponse;
   { f(req).second } -> std::same_as<std::string>;
 };
 
 template <typename Fn>
-concept JsonPostHandler = requires(Fn f, typename utl::first_argument<Fn> arg) {
-  {
-    std::remove_cvref_t<boost::beast::http::status>(f(arg).first)
-  } -> std::same_as<boost::beast::http::status>;
+concept JsonPostHandler = requires(Fn f, utl::first_argument<Fn> arg) {
+  { f(arg) } -> StatusResponse;
   { f(arg).second } -> JSON;
 };
 
 template <typename Fn>
 concept JsonGetHandler = requires(boost::urls::url_view const& url, Fn f) {
-  {
-    std::remove_cvref_t<boost::beast::http::status>(f(url).first)
-  } -> std::same_as<boost::beast::http::status>;
+  { f(url) } -> StatusResponse;
   { f(url).second } -> JSON;
 };
 
@@ -224,7 +208,7 @@ struct query_router {
                  });
   }
 
-  template <RespOnlyGetHandler Fn>
+  template <ContentOnlyHandler Fn>
   query_router& get(std::string const& path_regex, Fn&& fn) {
     return get(path_regex,
                [fn = std::forward<Fn>(fn)](boost::urls::url_view const& url) {
@@ -232,7 +216,7 @@ struct query_router {
                });
   }
 
-  template <RespOnlyPostHandler Fn>
+  template <ContentOnlyHandler Fn>
   query_router& post(std::string const& path_regex, Fn&& fn) {
     return post(path_regex, [fn = std::forward<Fn>(fn)](
                                 typename utl::first_argument<Fn> arg) {
