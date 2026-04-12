@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -45,24 +46,43 @@ concept JSON =
     boost::json::has_value_from<T>::value &&
     !std::is_same_v<T, std::string>;  // avoid ambiguity with string handlers
 
-template <typename Fn>
-concept StringGetHandler = requires(boost::urls::url_view const& url, Fn f) {
-  { f(url) } -> std::same_as<std::string>;
-};
+template <typename T>
+concept StatusResponse =
+    std::is_same_v<typename T::first_type, boost::beast::http::status>;
+
+template <typename T>
+concept ContentOnlyResponse = !StatusResponse<T>;
 
 template <typename Fn>
-concept StringPostHandler = requires(std::string_view const& req, Fn f) {
-  { f(req) } -> std::same_as<std::string>;
-};
-
-template <typename Fn>
-concept JsonPostHandler = requires(Fn f, typename utl::first_argument<Fn> arg) {
+concept ContentOnlyHandler = requires(Fn f, utl::first_argument<Fn> arg) {
+  { f(arg) } -> std::same_as<std::string>;
+} || requires(Fn f, utl::first_argument<Fn> arg) {
+  { f(arg) } -> ContentOnlyResponse;  // avoid ambiguity with json handlers
   { f(arg) } -> JSON;
 };
 
 template <typename Fn>
+concept StringGetHandler = requires(boost::urls::url_view const& url, Fn f) {
+  { f(url) } -> StatusResponse;
+  { f(url).second } -> std::same_as<std::string>;
+};
+
+template <typename Fn>
+concept StringPostHandler = requires(std::string_view const& req, Fn f) {
+  { f(req) } -> StatusResponse;
+  { f(req).second } -> std::same_as<std::string>;
+};
+
+template <typename Fn>
+concept JsonPostHandler = requires(Fn f, utl::first_argument<Fn> arg) {
+  { f(arg) } -> StatusResponse;
+  { f(arg).second } -> JSON;
+};
+
+template <typename Fn>
 concept JsonGetHandler = requires(boost::urls::url_view const& url, Fn f) {
-  { f(url) } -> JSON;
+  { f(url) } -> StatusResponse;
+  { f(url).second } -> JSON;
 };
 
 struct default_exec {
@@ -169,7 +189,10 @@ struct query_router {
     return *this;
   }
 
-  template <StringPostHandler Fn>
+  template <typename Fn>
+    requires requires(std::string_view const& req, Fn f) {
+      { f(req) } -> std::same_as<std::string>;
+    }
   query_router& route(std::string method, std::string const& path_regex,
                       Fn&& fn) {
     return route(std::move(method), path_regex,
@@ -183,19 +206,47 @@ struct query_router {
                  });
   }
 
+  template <ContentOnlyHandler Fn>
+  query_router& get(std::string const& path_regex, Fn&& fn) {
+    return get(path_regex,
+               [fn = std::forward<Fn>(fn)](boost::urls::url_view const& url) {
+                 return std::make_pair(boost::beast::http::status::ok, fn(url));
+               });
+  }
+
+  template <ContentOnlyHandler Fn>
+  query_router& post(std::string const& path_regex, Fn&& fn) {
+    return post(path_regex, [fn = std::forward<Fn>(fn)](
+                                typename utl::first_argument<Fn> arg) {
+      return std::make_pair(boost::beast::http::status::ok, fn(arg));
+    });
+  }
+
+  template <StringPostHandler Fn>
+  query_router& post(std::string const& path_regex, Fn&& fn) {
+    return route("POST", path_regex,
+                 [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
+                                             bool is_ssl) {
+                   auto [status, content] = fn(req.body());
+                   auto res =
+                       net::web_server::string_res_t{status, req.version()};
+                   set_response_body(res, req, content);
+                   res.keep_alive(req.keep_alive());
+                   return res;
+                 });
+  }
+
   template <StringGetHandler Fn>
   query_router& get(std::string const& path_regex, Fn&& fn) {
-    namespace http = boost::beast::http;
-    namespace json = boost::json;
-    return route(
-        "GET", path_regex,
-        [fn = std::forward<Fn>(fn)](route_request const& req,
-                                    bool const ssl) -> reply {
-          auto res = web_server::string_res_t{http::status::ok, req.version()};
-          set_response_body(res, req, fn(boost::url_view{req.target()}));
-          res.keep_alive(req.keep_alive());
-          return res;
-        });
+    return route("GET", path_regex,
+                 [fn = std::forward<Fn>(fn)](route_request const& req, bool) {
+                   auto [status, content] = fn(boost::url_view{req.target()});
+
+                   auto res = web_server::string_res_t{status, req.version()};
+                   set_response_body(res, req, content);
+                   res.keep_alive(req.keep_alive());
+                   return res;
+                 });
   }
 
   template <JsonPostHandler Fn>
@@ -204,14 +255,14 @@ struct query_router {
         "POST", path_regex,
         [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
                                     bool is_ssl) -> reply {
-          auto res = net::web_server::string_res_t{
-              boost::beast::http::status::ok, req.version()};
+          auto [status, content] =
+              fn(boost::json::value_to<std::decay_t<utl::first_argument<Fn>>>(
+                  boost::json::parse(req.body())));
+          auto res = net::web_server::string_res_t{status, req.version()};
           res.set(boost::beast::http::field::content_type, "application/json");
           set_response_body(
               res, req,
-              boost::json::serialize(boost::json::value_from(fn(
-                  boost::json::value_to<std::decay_t<utl::first_argument<Fn>>>(
-                      boost::json::parse(req.body()))))));
+              boost::json::serialize(boost::json::value_from(content)));
           res.keep_alive(req.keep_alive());
           return res;
         });
@@ -219,17 +270,16 @@ struct query_router {
 
   template <JsonGetHandler Fn>
   query_router& get(std::string const& path_regex, Fn&& fn) {
-    namespace http = boost::beast::http;
     namespace json = boost::json;
     return route("GET", path_regex,
-                 [fn = std::forward<Fn>(fn)](route_request const& req,
-                                             bool const ssl) -> reply {
-                   auto res = web_server::string_res_t{http::status::ok,
-                                                       req.version()};
-                   res.set(http::field::content_type, "application/json");
-                   set_response_body(res, req,
-                                     json::serialize(json::value_from(
-                                         fn(boost::url_view{req.target()}))));
+                 [fn = std::forward<Fn>(fn)](route_request const& req, bool) {
+                   auto [status, content] = fn(boost::url_view{req.target()});
+
+                   auto res = web_server::string_res_t{status, req.version()};
+                   res.set(boost::beast::http::field::content_type,
+                           "application/json");
+                   set_response_body(
+                       res, req, json::serialize(json::value_from(content)));
                    res.keep_alive(req.keep_alive());
                    return res;
                  });
