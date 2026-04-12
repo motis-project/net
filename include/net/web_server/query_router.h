@@ -57,7 +57,7 @@ template <typename Fn>
 concept ContentOnlyHandler = requires(Fn f, utl::first_argument<Fn> arg) {
   { f(arg) } -> std::same_as<std::string>;
 } || requires(Fn f, utl::first_argument<Fn> arg) {
-  { f(arg) } -> ContentOnlyResponse;  // avoid amibuity with json handlers
+  { f(arg) } -> ContentOnlyResponse;  // avoid ambiguity with json handlers
   { f(arg) } -> JSON;
 };
 
@@ -183,8 +183,7 @@ template <typename Executor = default_exec>
 struct query_router {
   explicit query_router(Executor&& exec) : exec_{std::move(exec)} {}
 
-  query_router& route(std::string method,
-                      std::string prefix,
+  query_router& route(std::string method, std::string prefix,
                       route_request_handler h) {
     routes_.push_back({std::move(method), std::move(prefix), std::move(h)});
     return *this;
@@ -194,8 +193,7 @@ struct query_router {
     requires requires(std::string_view const& req, Fn f) {
       { f(req) } -> std::same_as<std::string>;
     }
-  query_router& route(std::string method,
-                      std::string const& path_regex,
+  query_router& route(std::string method, std::string const& path_regex,
                       Fn&& fn) {
     return route(std::move(method), path_regex,
                  [fn = std::forward<Fn>(fn)](web_server::http_req_t const& req,
@@ -287,8 +285,7 @@ struct query_router {
                  });
   }
 
-  void operator()(web_server::http_req_t req,
-                  web_server::http_res_cb_t cb,
+  void operator()(web_server::http_req_t req, web_server::http_res_cb_t cb,
                   bool is_ssl) {
     auto const url = boost::urls::url_view{req.target()};
     auto const path = url.path();
