@@ -287,69 +287,81 @@ struct query_router {
 
   void operator()(web_server::http_req_t req, web_server::http_res_cb_t cb,
                   bool is_ssl) {
-    auto const url = boost::urls::url_view{req.target()};
-    auto const path = url.path();
+    try {
+      auto const url = boost::urls::url_view{req.target()};
+      auto const path = url.path();
 
-    auto route = utl::find_if(routes_, [&](handler const& h) {
-      return (h.method_ == "*" || h.method_ == req.method_string()) &&
-             path.starts_with(h.prefix_);
-    });
+      auto route = utl::find_if(routes_, [&](handler const& h) {
+        return (h.method_ == "*" || h.method_ == req.method_string()) &&
+               path.starts_with(h.prefix_);
+      });
 
-    if (route == end(routes_)) {
-      auto rep = reply{not_found_response(req)};
+      if (route == end(routes_)) {
+        auto rep = reply{not_found_response(req)};
+        if (reply_hook_) {
+          reply_hook_(rep);
+        }
+        return cb(std::move(rep));
+      }
+
+      auto route_req = route_request{std::move(req)};
+
+      set_credentials(route_req);
+      decode_content(route_req);
+
+      return exec_.exec(
+          [this, route, is_ssl, r = std::move(route_req)]() {
+            reply rep;
+            using namespace boost::json;
+            try {
+              rep = route->request_handler_(r, is_ssl);
+            } catch (openapi::bad_request_exception const& e) {
+              rep = bad_request_response(r,
+                                         serialize(value{{"error", e.what()}}));
+            } catch (net::not_found_exception const& e) {
+              rep =
+                  not_found_response(r, serialize(value{{"error", e.what()}}));
+            } catch (net::bad_request_exception const& e) {
+              rep = bad_request_response(r,
+                                         serialize(value{{"error", e.what()}}));
+            } catch (net::too_many_exception const& e) {
+              rep = unprocessable_entity_response(
+                  r, serialize(value{{"error", e.what()}}));
+            } catch (std::exception const& e) {
+              rep = server_error_response(
+                  r, serialize(value{{"error", e.what()}}));
+            } catch (...) {
+              rep = server_error_response(
+                  r, serialize(value{{"error", "Unknown error"}}));
+            }
+            if (reply_hook_) {
+              try {
+                reply_hook_(rep);
+              } catch (...) {
+                std::cerr
+                    << "query_router: unhandled exception in reply hook\n";
+              }
+            }
+            // Add headers
+            std::visit(
+                [&](auto& r) {
+                  for (auto const& header : headers_) {
+                    r.set(header.key_, header.value_);
+                  }
+                },
+                rep);
+            return std::move(rep);
+          },
+          std::move(cb));
+    } catch (...) {
+      auto rep = reply{bad_request_response(
+          req, serialize(
+                   boost::json::value{{"error", "malformed URI or request"}}))};
       if (reply_hook_) {
         reply_hook_(rep);
       }
       return cb(std::move(rep));
     }
-
-    auto route_req = route_request{std::move(req)};
-
-    set_credentials(route_req);
-    decode_content(route_req);
-
-    return exec_.exec(
-        [this, route, is_ssl, r = std::move(route_req)]() {
-          reply rep;
-          using namespace boost::json;
-          try {
-            rep = route->request_handler_(r, is_ssl);
-          } catch (openapi::bad_request_exception const& e) {
-            rep =
-                bad_request_response(r, serialize(value{{"error", e.what()}}));
-          } catch (net::not_found_exception const& e) {
-            rep = not_found_response(r, serialize(value{{"error", e.what()}}));
-          } catch (net::bad_request_exception const& e) {
-            rep =
-                bad_request_response(r, serialize(value{{"error", e.what()}}));
-          } catch (net::too_many_exception const& e) {
-            rep = unprocessable_entity_response(
-                r, serialize(value{{"error", e.what()}}));
-          } catch (std::exception const& e) {
-            rep =
-                server_error_response(r, serialize(value{{"error", e.what()}}));
-          } catch (...) {
-            rep = server_error_response(
-                r, serialize(value{{"error", "Unknown error"}}));
-          }
-          if (reply_hook_) {
-            try {
-              reply_hook_(rep);
-            } catch (...) {
-              std::cerr << "query_router: unhandled exception in reply hook\n";
-            }
-          }
-          // Add headers
-          std::visit(
-              [&](auto& r) {
-                for (auto const& header : headers_) {
-                  r.set(header.key_, header.value_);
-                }
-              },
-              rep);
-          return std::move(rep);
-        },
-        std::move(cb));
   }
 
   void reply_hook(std::function<void(reply&)> reply_hook) {
