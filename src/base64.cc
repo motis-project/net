@@ -1,8 +1,7 @@
 #include "net/base64.h"
 
 #include <algorithm>
-#include <iostream>
-#include <sstream>
+#include <iterator>
 
 #include "boost/archive/iterators/base64_from_binary.hpp"
 #include "boost/archive/iterators/binary_from_base64.hpp"
@@ -36,11 +35,13 @@ std::string decode_base64(std::string base64) {
 
 // From http://stackoverflow.com/a/7053808
 std::string encode_base64(std::string const& plain) {
-  std::stringstream os;
+  auto encoded = std::string{};
+  encoded.reserve(((plain.size() + 2U) / 3U) * 4U);
   std::copy(base64_text(plain.c_str()),
             base64_text(plain.c_str() + plain.size()),
-            ostream_iterator<char>(os));
-  return os.str();
+            std::back_inserter(encoded));
+  encoded.append((3U - (plain.size() % 3U)) % 3U, '=');
+  return encoded;
 }
 
 }  // namespace net
