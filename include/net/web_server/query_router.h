@@ -17,10 +17,15 @@
 #include "boost/json.hpp"
 #include "boost/url.hpp"
 
+#include "opentelemetry/context/runtime_context.h"
+#include "opentelemetry/sdk/resource/semantic_conventions.h"
+#include "opentelemetry/trace/span_metadata.h"
+
 #include "openapi/bad_request_exception.h"
 
 #include "net/bad_request_exception.h"
 #include "net/base64.h"
+#include "net/get_otel_tracer.h"
 #include "net/not_found_exception.h"
 #include "net/too_many_exception.h"
 #include "net/web_server/content_encoding.h"
@@ -287,10 +292,32 @@ struct query_router {
 
   void operator()(web_server::http_req_t req, web_server::http_res_cb_t cb,
                   bool is_ssl) {
-    try {
-      auto const url = boost::urls::url_view{req.target()};
-      auto const path = url.path();
 
+    HttpTextMapCarrier<std::map<std::string, std::string>> const carrier{
+        req.headers};
+    auto otel_propagator = opentelemetry::context::propagation::
+        GlobalTextMapPropagator::GetGlobalPropagator();
+    auto current_ctx = opentelemetry::context::RuntimeContext::GetCurrent();
+    auto new_ctx = otel_propagator->Extract(carrier, current_ctx);
+
+    auto const url = boost::urls::url_view{req.target()};
+    auto const path = url.path();
+
+    auto span = get_otel_tracer()->StartSpan(
+        req.target(),
+        {
+            // TODO
+            {SemanticConventions::kHttpRequestMethod, req.method_string()},
+            {SemanticConventions::kUrlPath, path},
+            {SemanticConventions::kUrlQuery, url.query()},
+            {SemanticConventions::kUrlScheme, "http"},
+        },
+        opentelemetry::trace::StartSpanOptions{
+            .parent = opentelemetry::trace::GetSpan(new_ctx)->GetContext(),
+            .kind = opentelemetry::trace::SpanKind::kServer});
+    auto const scope = get_otel_tracer()->WithActiveSpan(span);
+
+    try {
       auto route = utl::find_if(routes_, [&](handler const& h) {
         return (h.method_ == "*" || h.method_ == req.method_string()) &&
                path.starts_with(h.prefix_);
@@ -310,11 +337,14 @@ struct query_router {
       decode_content(route_req);
 
       return exec_.exec(
-          [this, route, is_ssl, r = std::move(route_req)]() {
+          [this, route, is_ssl, span, r = std::move(route_req)]() {
             reply rep;
             using namespace boost::json;
             try {
+              span->AddEvent("Processing Request");
               rep = route->request_handler_(r, is_ssl);
+              span->SetAttribute(SemanticConventions::kHttpResponseStatusCode,
+                                 rep.status_int());
             } catch (openapi::bad_request_exception const& e) {
               rep = bad_request_response(r,
                                          serialize(value{{"error", e.what()}}));
@@ -330,6 +360,8 @@ struct query_router {
             } catch (std::exception const& e) {
               rep = server_error_response(
                   r, serialize(value{{"error", e.what()}}));
+              span->SetStatus(opentelemetry::trace::StatusCode::kError);
+              span->SetAttribute(SemanticConventions::kErrorType, rep.result());
             } catch (...) {
               rep = server_error_response(
                   r, serialize(value{{"error", "Unknown error"}}));
@@ -354,9 +386,11 @@ struct query_router {
           },
           std::move(cb));
     } catch (...) {
+      constexpr auto const what = "malformed URI or request";
       auto rep = reply{bad_request_response(
-          req, serialize(
-                   boost::json::value{{"error", "malformed URI or request"}}))};
+          req, serialize(boost::json::value{{"error", what}}))};
+      Span->SetStatus(opentelemetry::trace::StatusCode::kError, what);
+      Span->SetAttribute(SemanticConventions::kErrorType, rep.result());
       if (reply_hook_) {
         reply_hook_(rep);
       }
