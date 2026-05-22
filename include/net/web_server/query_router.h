@@ -304,7 +304,7 @@ struct query_router {
     auto const path = url.path();
 
     auto span = get_otel_tracer()->StartSpan(
-        req.target(),
+        req.method_string() + " " + req.target,
         {
             // TODO
             {SemanticConventions::kHttpRequestMethod, req.method_string()},
