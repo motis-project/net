@@ -317,6 +317,11 @@ struct query_router {
             .kind = opentelemetry::trace::SpanKind::kServer});
     auto const scope = get_otel_tracer()->WithActiveSpan(span);
 
+    for (auto const user_agent = req[boost::asio::http::field::user_agent];
+         !user_agent.empty()) {
+      span->SetAttribute(SemanticConventions::kUserAgentOriginal, user_agent);
+    }
+
     try {
       auto route = utl::find_if(routes_, [&](handler const& h) {
         return (h.method_ == "*" || h.method_ == req.method_string()) &&
