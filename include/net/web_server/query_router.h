@@ -6,6 +6,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "utl/helpers/algorithm.h"
@@ -17,8 +18,10 @@
 #include "boost/json.hpp"
 #include "boost/url.hpp"
 
+#include "opentelemetry/context/propagation/global_propagator.h"
 #include "opentelemetry/context/runtime_context.h"
 #include "opentelemetry/sdk/resource/semantic_conventions.h"
+#include "opentelemetry/trace/context.h"
 #include "opentelemetry/trace/span_metadata.h"
 
 #include "openapi/bad_request_exception.h"
@@ -27,6 +30,7 @@
 #include "net/base64.h"
 #include "net/get_otel_tracer.h"
 #include "net/not_found_exception.h"
+#include "net/otel_text_map_carrier.h"
 #include "net/too_many_exception.h"
 #include "net/web_server/content_encoding.h"
 #include "net/web_server/enable_cors.h"
@@ -293,8 +297,10 @@ struct query_router {
   void operator()(web_server::http_req_t req, web_server::http_res_cb_t cb,
                   bool is_ssl) {
 
-    HttpTextMapCarrier<std::map<std::string, std::string>> const carrier{
-        req.headers};
+    namespace semconv = opentelemetry::sdk::resource::SemanticConventions;
+
+    http_text_map_carrier<web_server::http_req_t::fields_type> const carrier{
+        req.base()};
     auto otel_propagator = opentelemetry::context::propagation::
         GlobalTextMapPropagator::GetGlobalPropagator();
     auto current_ctx = opentelemetry::context::RuntimeContext::GetCurrent();
@@ -304,23 +310,56 @@ struct query_router {
     auto const path = url.path();
 
     auto span = get_otel_tracer()->StartSpan(
-        req.method_string() + " " + req.target,
+        // req.method_string() + " "sv + req.target(),
+        req.method_string(),
         {
             // TODO
-            {SemanticConventions::kHttpRequestMethod, req.method_string()},
-            {SemanticConventions::kUrlPath, path},
-            {SemanticConventions::kUrlQuery, url.query()},
-            {SemanticConventions::kUrlScheme, "http"},
+            {semconv::kHttpRequestMethod, req.method_string()},
+            {semconv::kUrlPath, path},
+            {semconv::kUrlQuery, url.query()},
+            {semconv::kUrlScheme, "http"},
         },
         opentelemetry::trace::StartSpanOptions{
             .parent = opentelemetry::trace::GetSpan(new_ctx)->GetContext(),
             .kind = opentelemetry::trace::SpanKind::kServer});
     auto const scope = get_otel_tracer()->WithActiveSpan(span);
 
-    for (auto const user_agent = req[boost::asio::http::field::user_agent];
-         !user_agent.empty()) {
-      span->SetAttribute(SemanticConventions::kUserAgentOriginal, user_agent);
+    if (auto const user_agent = req[boost::beast::http::field::user_agent];
+        !user_agent.empty()) {
+      span->SetAttribute(semconv::kUserAgentOriginal, user_agent);
     }
+
+    // auto const set_otlp_status = [&](reply const& rep, bool is_error) {
+    //   auto const field =
+    //       is_error ? semconv::kErrorType : semconv::kHttpResponseStatusCode;
+    //   std::visit(utl::overloaded{[&](web_server::string_res_t rep) {
+    //                                span->SetAttribute(field,
+    //                                rep.result_int());
+    //                              },
+    //                              [&](web_server::buffer_res_t rep) {
+    //                                span->SetAttribute(field,
+    //                                rep.result_int());
+    //                              },
+    //                              [&](web_server::file_res_t rep) {
+    //                                span->SetAttribute(field,
+    //                                rep.result_int());
+    //                              },
+    //                              [&](web_server::empty_res_t rep) {
+    //                                span->SetAttribute(field,
+    //                                rep.result_int());
+    //                              }},
+    //              rep);
+    // };
+
+    auto const set_otlp_status = [&span](reply const& rep, bool is_error) {
+      auto const field =
+          is_error ? semconv::kErrorType : semconv::kHttpResponseStatusCode;
+      std::visit(
+          [&span, &field](auto& rep) {
+            span->SetAttribute(field, rep.result_int());
+          },
+          rep);
+    };
 
     try {
       auto route = utl::find_if(routes_, [&](handler const& h) {
@@ -342,14 +381,14 @@ struct query_router {
       decode_content(route_req);
 
       return exec_.exec(
-          [this, route, is_ssl, span, r = std::move(route_req)]() {
+          [this, route, is_ssl, span, set_otlp_status,
+           r = std::move(route_req)]() {
             reply rep;
             using namespace boost::json;
             try {
               span->AddEvent("Processing Request");
               rep = route->request_handler_(r, is_ssl);
-              span->SetAttribute(SemanticConventions::kHttpResponseStatusCode,
-                                 rep.status_int());
+              set_otlp_status(rep, false);
             } catch (openapi::bad_request_exception const& e) {
               rep = bad_request_response(r,
                                          serialize(value{{"error", e.what()}}));
@@ -366,7 +405,7 @@ struct query_router {
               rep = server_error_response(
                   r, serialize(value{{"error", e.what()}}));
               span->SetStatus(opentelemetry::trace::StatusCode::kError);
-              span->SetAttribute(SemanticConventions::kErrorType, rep.result());
+              set_otlp_status(rep, true);
             } catch (...) {
               rep = server_error_response(
                   r, serialize(value{{"error", "Unknown error"}}));
@@ -394,8 +433,8 @@ struct query_router {
       constexpr auto const what = "malformed URI or request";
       auto rep = reply{bad_request_response(
           req, serialize(boost::json::value{{"error", what}}))};
-      Span->SetStatus(opentelemetry::trace::StatusCode::kError, what);
-      Span->SetAttribute(SemanticConventions::kErrorType, rep.result());
+      span->SetStatus(opentelemetry::trace::StatusCode::kError, what);
+      set_otlp_status(rep, true);
       if (reply_hook_) {
         reply_hook_(rep);
       }
