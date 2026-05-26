@@ -322,36 +322,13 @@ struct query_router {
         opentelemetry::trace::StartSpanOptions{
             .parent = opentelemetry::trace::GetSpan(new_ctx)->GetContext(),
             .kind = opentelemetry::trace::SpanKind::kServer});
-    auto const scope = get_otel_tracer()->WithActiveSpan(span);
 
     if (auto const user_agent = req[boost::beast::http::field::user_agent];
         !user_agent.empty()) {
       span->SetAttribute(semconv::kUserAgentOriginal, user_agent);
     }
 
-    // auto const set_otlp_status = [&](reply const& rep, bool is_error) {
-    //   auto const field =
-    //       is_error ? semconv::kErrorType : semconv::kHttpResponseStatusCode;
-    //   std::visit(utl::overloaded{[&](web_server::string_res_t rep) {
-    //                                span->SetAttribute(field,
-    //                                rep.result_int());
-    //                              },
-    //                              [&](web_server::buffer_res_t rep) {
-    //                                span->SetAttribute(field,
-    //                                rep.result_int());
-    //                              },
-    //                              [&](web_server::file_res_t rep) {
-    //                                span->SetAttribute(field,
-    //                                rep.result_int());
-    //                              },
-    //                              [&](web_server::empty_res_t rep) {
-    //                                span->SetAttribute(field,
-    //                                rep.result_int());
-    //                              }},
-    //              rep);
-    // };
-
-    auto const set_otlp_status = [&span](reply const& rep, bool is_error) {
+    auto const set_otlp_status = [span](reply const& rep, bool is_error) {
       auto const field =
           is_error ? semconv::kErrorType : semconv::kHttpResponseStatusCode;
       std::visit(
@@ -438,8 +415,10 @@ struct query_router {
       if (reply_hook_) {
         reply_hook_(rep);
       }
+      span->End();
       return cb(std::move(rep));
     }
+    span->End();
   }
 
   void reply_hook(std::function<void(reply&)> reply_hook) {
