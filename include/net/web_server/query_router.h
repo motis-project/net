@@ -310,14 +310,14 @@ struct query_router {
     auto const path = url.path();
 
     auto span = get_otel_tracer()->StartSpan(
-        // req.method_string() + " "sv + req.target(),
-        req.method_string(),
+        fmt::format("{} {}", req.method_string(), req.target()),
         {
-            // TODO
             {semconv::kHttpRequestMethod, req.method_string()},
             {semconv::kUrlPath, path},
             {semconv::kUrlQuery, url.query()},
-            {semconv::kUrlScheme, "http"},
+            {semconv::kUrlScheme, url.scheme()},
+            {semconv::kServerAddress, url.host_address()},
+            {semconv::kServerPort, url.port()},
         },
         opentelemetry::trace::StartSpanOptions{
             .parent = opentelemetry::trace::GetSpan(new_ctx)->GetContext(),
@@ -326,6 +326,16 @@ struct query_router {
     if (auto const user_agent = req[boost::beast::http::field::user_agent];
         !user_agent.empty()) {
       span->SetAttribute(semconv::kUserAgentOriginal, user_agent);
+    }
+
+    // for (auto it = req.cbegin(); it != req.cend(); it++) {
+    //   span->SetAttribute(fmt::format("http.request.header.{}", *it),
+    //   req[*it]);
+    // }
+    for (auto const& field : req) {
+      span->SetAttribute(
+          fmt::format("http.request.header.{}", field.name_string()),
+          field.value());
     }
 
     auto const set_otlp_status = [span](reply const& rep, bool is_error) {
@@ -357,6 +367,13 @@ struct query_router {
       set_credentials(route_req);
       decode_content(route_req);
 
+      span->UpdateName(fmt::format("{} {}", route->method_, route->prefix_));
+      span->SetAttribute(semconv::kHttpRoute, route->prefix_);
+      if (route->method_ == "POST") {
+        span->SetAttribute(semconv::kHttpRequestBodySize, req.body().size());
+        span->SetAttribute("query_router.http.request.body", req.body());
+      }
+
       return exec_.exec(
           [this, route, is_ssl, span, set_otlp_status,
            r = std::move(route_req)]() {
@@ -366,6 +383,13 @@ struct query_router {
               span->AddEvent("Processing Request");
               rep = route->request_handler_(r, is_ssl);
               set_otlp_status(rep, false);
+              std::visit(
+                  [&span](auto& rep) {
+                    span->SetAttribute(semconv::kHttpResponseBodySize,
+                                       rep.payload_size().value_or(0));
+                  },
+                  rep);
+
             } catch (openapi::bad_request_exception const& e) {
               rep = bad_request_response(r,
                                          serialize(value{{"error", e.what()}}));
