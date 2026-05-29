@@ -1,4 +1,6 @@
 /*build*
 /deps
 /.idea
+/.vscode
 .pkg.mutex
+.vscode
