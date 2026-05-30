@@ -8,8 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include "utl/argument_helper.h"
 #include "utl/helpers/algorithm.h"
-#include "utl/overloaded.h"
 #include "utl/verify.h"
 
 #include "boost/asio/post.hpp"
@@ -83,6 +83,15 @@ template <typename Fn>
 concept JsonGetHandler = requires(boost::urls::url_view const& url, Fn f) {
   { f(url) } -> StatusResponse;
   { f(url).second } -> JSON;
+};
+
+// POST handler that receives both the URL (for query params) and the parsed
+// JSON request body, returning the JSON content directly.
+template <typename Fn>
+concept JsonUrlPostHandler = requires(boost::urls::url_view const& url,
+                                      utl::second_argument<Fn> body, Fn f) {
+  { f(url, body) } -> ContentOnlyResponse;
+  { f(url, body) } -> JSON;
 };
 
 struct default_exec {
@@ -263,6 +272,26 @@ struct query_router {
           set_response_body(
               res, req,
               boost::json::serialize(boost::json::value_from(content)));
+          res.keep_alive(req.keep_alive());
+          return res;
+        });
+  }
+
+  template <JsonUrlPostHandler Fn>
+  query_router& post(std::string const& path_regex, Fn&& fn) {
+    namespace json = boost::json;
+    return route(
+        "POST", path_regex,
+        [fn = std::forward<Fn>(fn)](route_request const& req, bool) -> reply {
+          auto const content =
+              fn(boost::urls::url_view{req.target()},
+                 json::value_to<std::decay_t<utl::second_argument<Fn>>>(
+                     json::parse(req.body())));
+          auto res = net::web_server::string_res_t{
+              boost::beast::http::status::ok, req.version()};
+          res.set(boost::beast::http::field::content_type, "application/json");
+          set_response_body(res, req,
+                            json::serialize(json::value_from(content)));
           res.keep_alive(req.keep_alive());
           return res;
         });
